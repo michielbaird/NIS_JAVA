@@ -14,8 +14,8 @@ public class ClientListener extends Thread {
 	private ServerSocket serverSocket;
 	private SessionHandler sessionHandler;
 	
-	public ClientListener(SessionHandler sessionHandler) throws IOException {
-		serverSocket = new ServerSocket(8081);
+	public ClientListener(SessionHandler sessionHandler, int port) throws IOException {
+		serverSocket = new ServerSocket(port);
 		this.sessionHandler = sessionHandler;
 	}
 	
