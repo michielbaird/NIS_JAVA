@@ -1,21 +1,25 @@
 package com.nis.server;
 
-import com.google.gson.Gson;
-import com.nis.server.handlers.PingHandler;
-import com.nis.shared.Request;
-import com.nis.shared.Response;
-import com.nis.shared.requests.Ping;
-import com.nis.shared.response.PingResult;
-
 import java.io.BufferedReader;
 import java.io.CharArrayWriter;
 import java.io.DataOutputStream;
 import java.io.InputStreamReader;
 import java.net.Socket;
+import java.util.HashMap;
+
+import com.google.gson.Gson;
+import com.nis.server.handlers.GetSessionKeyHandler;
+import com.nis.shared.Request;
+import com.nis.shared.Response;
 
 
 public class SocketHandler extends Thread {
-	
+	public static HashMap<String, Class<? extends Handle>> callMap
+	= new HashMap<String,Class<? extends Handle> >();
+	static {
+		callMap.put("get_session_key", GetSessionKeyHandler.class);
+		
+	}
 	private final static int buf_size = 4096;
 	
 	private Socket clientSocket;
@@ -42,18 +46,17 @@ public class SocketHandler extends Thread {
 		      }
 		    }
 		    String receiveString = data.toString().trim();
-		    
+		
 			Request request = gson.fromJson(receiveString, Request.class);
+			String method = request.method;
+			Class<? extends Handle> handleType 
+	    		= SocketHandler.callMap.get(method);
+			Handle handle = handleType.newInstance();
+			String result = handle.handle(request.params);
 			
-			String result="";
-			int error = 1;
-			if (request.method.equals("ping")) {
-			   PingResult rawResult = PingHandler.handle(gson.fromJson(request.params, Ping.class));
-			   result = gson.toJson(rawResult);
-			   error = 0;
-			} 
-			Response response =  new Response(result, request.id, error);
+			Response response =  new Response(result, request.id, 0);
 			outToClient.writeBytes(gson.toJson(response));
+			outToClient.flush();
 			outToClient.close();
 			
 		} catch (Exception e) {

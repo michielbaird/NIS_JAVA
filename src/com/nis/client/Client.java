@@ -12,9 +12,10 @@ import java.util.Scanner;
 import com.google.gson.Gson;
 import com.nis.shared.Request;
 import com.nis.shared.Response;
-import com.nis.shared.SessionHandler;
-import com.nis.shared.requests.Hello;
-import com.nis.shared.requests.Ping;
+import com.nis.client.SessionHandler;
+import com.nis.shared.requests.GetSessionKey;
+import com.nis.shared.requests.Hello;	
+import com.nis.shared.response.GetSessionKeyResult;
 import com.nis.shared.response.HelloResult;
 
 public class Client {
@@ -48,6 +49,8 @@ public class Client {
 	public void Handshake(String address, int port, String handle) {
 		int nonceA = random.nextInt();
 		int nonceB = sayHello(address, port, nonceA);
+		GetSessionKeyResult getSessionKeyResult = getKey(handle, 
+				nonceA, nonceB);
 		return;
 		
 	}
@@ -61,6 +64,16 @@ public class Client {
 		
 	}
 	
+	private GetSessionKeyResult getKey(String handle, int nonceA, int nonceB) {
+		GetSessionKey getSessionKey = new GetSessionKey(clientHandle, 
+				handle, nonceA, nonceB);
+		String result = sendRequest(serverAddress, serverPort, 
+				"get_session_key", gson.toJson(getSessionKey));
+		GetSessionKeyResult getSessionKeyResult = gson.fromJson(result,
+				GetSessionKeyResult.class);
+		return getSessionKeyResult;
+	}
+	
 	private String sendRequest(String address, int port, 
 			String method, String params) {
 		char buf[] = new char[buf_size];
@@ -69,7 +82,8 @@ public class Client {
 		String result = null;
 		try {
 			Socket clientSocket = new Socket(address, port);
-			PrintWriter outToClient = new PrintWriter(clientSocket.getOutputStream(), true);
+			PrintWriter outToClient = new PrintWriter(
+					clientSocket.getOutputStream(), true);
 			BufferedReader inFromClient = new BufferedReader(
 					new InputStreamReader(clientSocket.getInputStream()));
 			outToClient.write(gson.toJson(request) + "\0");

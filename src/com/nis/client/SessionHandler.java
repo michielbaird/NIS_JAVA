@@ -1,4 +1,4 @@
-package com.nis.shared;
+package com.nis.client;
 
 import java.util.HashMap;
 import java.util.Random;
@@ -23,8 +23,8 @@ public class SessionHandler {
 		if (sessionKeys.containsKey(handle)){
 			sessionKeys.remove(handle);
 		}
-		if (sessionKeys.containsKey(handle)) {
-			sessionKeys.remove(handle);
+		if (nonceMapHandler.containsKey(handle)) {
+			nonceMapHandler.remove(handle);
 		}
 		int nounceB = random.nextInt();
 		nonceMapHandler.put(handle,  new Pair<Integer,Integer>(nonceA,nounceB));

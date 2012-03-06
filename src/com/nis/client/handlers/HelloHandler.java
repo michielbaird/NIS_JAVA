@@ -1,8 +1,8 @@
 package com.nis.client.handlers;
 
 import com.google.gson.Gson;
-import com.nis.shared.Handle;
-import com.nis.shared.SessionHandler;
+import com.nis.client.Handle;
+import com.nis.client.SessionHandler;
 import com.nis.shared.requests.Hello;
 import com.nis.shared.response.HelloResult;
 
