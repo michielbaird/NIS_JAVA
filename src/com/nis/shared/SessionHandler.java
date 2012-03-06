@@ -27,7 +27,7 @@ public class SessionHandler {
 			sessionKeys.remove(handle);
 		}
 		int nounceB = random.nextInt();
-		nonceMapHandler.put(handle,  new Pair(nonceA,nounceB));
+		nonceMapHandler.put(handle,  new Pair<Integer,Integer>(nonceA,nounceB));
 		return nounceB;
 	}
 

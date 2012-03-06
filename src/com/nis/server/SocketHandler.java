@@ -32,9 +32,7 @@ public class SocketHandler extends Thread {
 			
 	        BufferedReader inFromClient = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 			DataOutputStream outToClient = new DataOutputStream(clientSocket.getOutputStream());
-			outToClient.flush();
 		    CharArrayWriter data = new CharArrayWriter();
-		    
 		    
 		    while ((ret = inFromClient.read(buf, 0, buf_size)) != -1)
 		    {

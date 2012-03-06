@@ -63,6 +63,8 @@ public class RequestHandler extends Thread {
 		    String result = handle.handle(sessionHandler, request.params);
 		    Response response = new Response(result, request.id, 0);
 		    outToClient.write(gson.toJson(response));
+		    outToClient.flush();
+		    clientSocket.close();
 		    
 		} catch (IOException e) {
 			

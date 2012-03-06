@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Random;
+import java.util.Scanner;
 
 import com.google.gson.Gson;
 import com.nis.shared.Request;
@@ -17,7 +18,11 @@ import com.nis.shared.requests.Ping;
 import com.nis.shared.response.HelloResult;
 
 public class Client {
+	
 	private final static int buf_size = 4096;
+	private final static String serverAddress = "localhost";
+	private final static int serverPort = 8081;
+	
 	private SessionHandler sessionHandler;
 	private ClientListener clientListener;
 	private String clientHandle;
@@ -37,13 +42,13 @@ public class Client {
 			System.err.println("Failed to set up client listener.");
 			System.exit(1);
 		}
-		clientListener.run();
+		clientListener.start();
 	}
 	
 	public void Handshake(String address, int port, String handle) {
 		int nonceA = random.nextInt();
 		int nonceB = sayHello(address, port, nonceA);
-		
+		return;
 		
 	}
 	
@@ -68,6 +73,7 @@ public class Client {
 			BufferedReader inFromClient = new BufferedReader(
 					new InputStreamReader(clientSocket.getInputStream()));
 			outToClient.write(gson.toJson(request) + "\0");
+			outToClient.flush();
 			
 			CharArrayWriter data = new CharArrayWriter();
 			while ((ret = inFromClient.read(buf, 0, buf_size)) != -1)
@@ -83,6 +89,7 @@ public class Client {
 		  		// Throw Error.
 		  	}
 		  	result = response.result;
+		  	clientSocket.close();
 		  	
 		} catch (IOException e) {
 		  
@@ -93,32 +100,28 @@ public class Client {
 	
 	public static void main(String argv[]) throws Exception
 	 {
-	  Ping ping =  new Ping();
-	  Gson gson = new Gson();
-	  char buf[] = new char[buf_size];
-	  int ret;
-	  Request request = new Request("ping", 1, gson.toJson(ping));
-	  
-	  Socket clientSocket = new Socket("localhost", 8081);
-	  PrintWriter outToServer = new PrintWriter(clientSocket.getOutputStream(), true);
-	  BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-	  
-	  outToServer.write(gson.toJson(request) +"\0");
-	  outToServer.flush();
-	  //outToServer.close();
+		Scanner scanner;
+		scanner =  new Scanner(System.in);
 
+		int localport;
+		String handle;
+		System.out.print("Enter the local port: ");
+		localport = scanner.nextInt();
+		System.out.println("port: " + localport);
+		System.out.print("Enter the user handle: ");
+		handle = scanner.next();
+		System.out.println("handle: " + handle);
+		Client client = new Client(handle, localport);
+		
+		while (true) {
+			int remotePort;
+			String remoteHandle;
+			System.out.print("Enter the remote port: ");
+			remotePort = scanner.nextInt();
+			System.out.print("Enter the user handle: ");
+			remoteHandle = scanner.next();
+			client.Handshake(serverAddress, remotePort, remoteHandle);
+		}
 	  
-	  CharArrayWriter data = new CharArrayWriter();
-	  while ((ret = inFromServer.read(buf, 0, buf_size)) != -1)
-	    {
-	      data.write(buf, 0, ret);
-	    }
-	  String receiveString = data.toString();
-	  
-	  Response response = gson.fromJson(receiveString, Response.class);
-	  if (response.error.equals(0)) {
-		  System.out.println("FROM SERVER: PONG");
-	  }
-	  clientSocket.close();
 	 }
 }
