@@ -5,7 +5,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class ClientListener extends Thread {
-	private final static int buf_size = 4096;
 	
 	private ServerSocket serverSocket;
 	private SessionHandler sessionHandler;
