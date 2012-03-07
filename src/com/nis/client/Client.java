@@ -5,9 +5,15 @@ import java.io.CharArrayWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.InetAddress;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.net.InetSocketAddress;
 
 import com.google.gson.Gson;
 import com.nis.shared.Request;
@@ -15,24 +21,29 @@ import com.nis.shared.Response;
 import com.nis.client.SessionHandler;
 import com.nis.shared.requests.GetSessionKey;
 import com.nis.shared.requests.Hello;	
+import com.nis.shared.requests.Wave;
 import com.nis.shared.response.GetSessionKeyResult;
 import com.nis.shared.response.HelloResult;
+import com.nis.shared.response.WaveResult;
 
 public class Client {
-	
+
 	private final static int buf_size = 4096;
 	private final static String serverAddress = "localhost";
 	private final static int serverPort = 8081;
 	
-	private SessionHandler sessionHandler;
+	private final int clientPort;
+	private final SessionHandler sessionHandler;
 	private ClientListener clientListener;
-	private String clientHandle;
-	private Gson gson;
-	private Random random;
+	private final String clientHandle;
+	private final Gson gson;
+	private final Random random;
+	private Map userList;
 	private int id;
-	
+
 	public Client(String handle, int port) {
 		this.id = 1;
+		this.clientPort = port;
 		this.clientHandle = handle;
 		this.sessionHandler = new SessionHandler();
 		this.gson = new Gson();
@@ -44,17 +55,37 @@ public class Client {
 			System.exit(1);
 		}
 		clientListener.start();
+		Timer waveDelay =  new Timer();
+		waveDelay.schedule(new TimerTask() {
+			@Override
+			public void run() {
+				waveToServer();
+			}
+		}, 500);
 	}
-	
-	public void Handshake(String address, int port, String handle) {
-		int nonceA = random.nextInt();
-		int nonceB = sayHello(address, port, nonceA);
-		GetSessionKeyResult getSessionKeyResult = getKey(handle, 
-				nonceA, nonceB);
+
+	private void waveToServer() {
+		Wave wave =  new Wave(clientHandle,clientPort);
+		String result = sendRequest(serverAddress, serverPort, "wave", gson.toJson(wave));
+		WaveResult waveResult =  gson.fromJson(result, WaveResult.class);
+		userList = gson.fromJson(waveResult.userListJson, Map.class);
+		System.err.println(userList);
+	}
+
+	public void Handshake(String handle) {
+		if (handle != clientHandle && userList != null && userList.containsKey(handle)) {
+			int nonceA = random.nextInt();
+			Map address = (Map)userList.get(handle);
+			String addr = (String)address.get("addr");
+			int port = ((Double)address.get("port")).intValue();
+			int nonceB = sayHello(addr, port, nonceA);
+			GetSessionKeyResult getSessionKeyResult = getKey(handle, 
+					nonceA, nonceB);
+		}
 		return;
 		
 	}
-	
+
 	private int sayHello(String address, int port, int nonceA) {
 		Hello hello = new Hello(clientHandle, nonceA);
 		String result = sendRequest(address, port, "hello",
@@ -63,7 +94,7 @@ public class Client {
 		return helloResult.nonce;
 		
 	}
-	
+
 	private GetSessionKeyResult getKey(String handle, int nonceA, int nonceB) {
 		GetSessionKey getSessionKey = new GetSessionKey(clientHandle, 
 				handle, nonceA, nonceB);
@@ -73,7 +104,7 @@ public class Client {
 				GetSessionKeyResult.class);
 		return getSessionKeyResult;
 	}
-	
+
 	private String sendRequest(String address, int port, 
 			String method, String params) {
 		char buf[] = new char[buf_size];
@@ -81,32 +112,34 @@ public class Client {
 		Request request = new Request(method, id, params);
 		String result = null;
 		try {
-			Socket clientSocket = new Socket(address, port);
+			Socket clientSocket = new Socket();
+			//clientSocket.bind(new InetSocketAddress(clientPort+1));
+			clientSocket.connect(new InetSocketAddress(address,port));
 			PrintWriter outToClient = new PrintWriter(
 					clientSocket.getOutputStream(), true);
 			BufferedReader inFromClient = new BufferedReader(
 					new InputStreamReader(clientSocket.getInputStream()));
 			outToClient.write(gson.toJson(request) + "\0");
 			outToClient.flush();
-			
+
 			CharArrayWriter data = new CharArrayWriter();
 			while ((ret = inFromClient.read(buf, 0, buf_size)) != -1)
 		    {
 		      data.write(buf, 0, ret);
 		    }
 			String receiveString = data.toString();
-		  	Response response = gson.fromJson(receiveString, Response.class);
-		  	clientSocket.close();
-		  	if (response.id != id++) {
-		  		// ThrowID Mismatch.
-		  	} else if (response.error.equals(0)) {
-		  		// Throw Error.
-		  	}
-		  	result = response.result;
-		  	clientSocket.close();
-		  	
+			Response response = gson.fromJson(receiveString, Response.class);
+			clientSocket.close();
+			if (response.id != id++) {
+				// ThrowID Mismatch.
+			} else if (response.error.equals(0)) {
+				// Throw Error.
+			}
+			result = response.result;
+			clientSocket.close();
+			
 		} catch (IOException e) {
-		  
+		
 		}
 		return result;
 	}
@@ -126,16 +159,12 @@ public class Client {
 		handle = scanner.next();
 		System.out.println("handle: " + handle);
 		Client client = new Client(handle, localport);
-		
+
 		while (true) {
-			int remotePort;
 			String remoteHandle;
-			System.out.print("Enter the remote port: ");
-			remotePort = scanner.nextInt();
 			System.out.print("Enter the user handle: ");
 			remoteHandle = scanner.next();
-			client.Handshake(serverAddress, remotePort, remoteHandle);
+			client.Handshake(remoteHandle);
 		}
-	  
 	 }
 }
