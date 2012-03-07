@@ -9,6 +9,7 @@ public class Server  {
 	
 	public static void main(String [] argv) {
 		//Initialise Key Map;
+		ServerInfo serverInfo = new ServerInfo();
 		try {
 			incomingSocket = new ServerSocket(8081);
 		} catch (Exception e) {
@@ -17,7 +18,7 @@ public class Server  {
 		while (true) {
 			try {
 				Socket clientSocket =  incomingSocket.accept();
-				SocketHandler handler =  new SocketHandler(clientSocket);
+				SocketHandler handler =  new SocketHandler(clientSocket, serverInfo);
 				handler.start();
 			} catch (Exception e) {
 				
