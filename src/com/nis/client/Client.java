@@ -8,6 +8,7 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Timer;
@@ -37,7 +38,7 @@ public class Client {
 	private final String clientHandle;
 	private final Gson gson;
 	private final Random random;
-	private HashMap<String, InetSocketAddress> userlist;
+	private Map userList;
 	private int id;
 
 	public Client(String handle, int port) {
@@ -67,15 +68,20 @@ public class Client {
 		Wave wave =  new Wave(clientHandle,clientPort);
 		String result = sendRequest(serverAddress, serverPort, "wave", gson.toJson(wave));
 		WaveResult waveResult =  gson.fromJson(result, WaveResult.class);
-		userlist = gson.fromJson(waveResult.userListJson, HashMap.class );
-		System.err.println(userlist);
+		userList = gson.fromJson(waveResult.userListJson, Map.class);
+		System.err.println(userList);
 	}
 
-	public void Handshake(String address, int port, String handle) {
-		int nonceA = random.nextInt();
-		int nonceB = sayHello(address, port, nonceA);
-		GetSessionKeyResult getSessionKeyResult = getKey(handle, 
-				nonceA, nonceB);
+	public void Handshake(String handle) {
+		if (handle != clientHandle && userList != null && userList.containsKey(handle)) {
+			int nonceA = random.nextInt();
+			Map address = (Map)userList.get(handle);
+			String addr = (String)address.get("addr");
+			int port = ((Double)address.get("port")).intValue();
+			int nonceB = sayHello(addr, port, nonceA);
+			GetSessionKeyResult getSessionKeyResult = getKey(handle, 
+					nonceA, nonceB);
+		}
 		return;
 		
 	}
@@ -155,13 +161,10 @@ public class Client {
 		Client client = new Client(handle, localport);
 
 		while (true) {
-			int remotePort;
 			String remoteHandle;
-			System.out.print("Enter the remote port: ");
-			remotePort = scanner.nextInt();
 			System.out.print("Enter the user handle: ");
 			remoteHandle = scanner.next();
-			client.Handshake(serverAddress, remotePort, remoteHandle);
+			client.Handshake(remoteHandle);
 		}
 	 }
 }
