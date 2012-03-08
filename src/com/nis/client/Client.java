@@ -107,8 +107,8 @@ public class Client {
 
 	private String sendRequest(String address, int port, 
 			String method, String params) {
-		char buf[] = new char[buf_size];
-		int ret;
+		//char buf[] = new char[buf_size];
+		//int ret;
 		Request request = new Request(method, id, params);
 		String result = null;
 		try {
@@ -117,17 +117,17 @@ public class Client {
 			clientSocket.connect(new InetSocketAddress(address,port));
 			PrintWriter outToClient = new PrintWriter(
 					clientSocket.getOutputStream(), true);
-			BufferedReader inFromClient = new BufferedReader(
+			BufferedReader inFromHost = new BufferedReader(
 					new InputStreamReader(clientSocket.getInputStream()));
-			outToClient.write(gson.toJson(request) + "\0");
+			outToClient.write(gson.toJson(request));
 			outToClient.flush();
 
-			CharArrayWriter data = new CharArrayWriter();
+			/*CharArrayWriter data = new CharArrayWriter();
 			while ((ret = inFromClient.read(buf, 0, buf_size)) != -1)
 		    {
 		      data.write(buf, 0, ret);
-		    }
-			String receiveString = data.toString();
+		    }*/
+			String receiveString = inFromHost.readLine();
 			Response response = gson.fromJson(receiveString, Response.class);
 			clientSocket.close();
 			if (response.id != id++) {
