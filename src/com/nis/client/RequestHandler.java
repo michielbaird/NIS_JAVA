@@ -1,17 +1,18 @@
 package com.nis.client;
 
-import com.google.gson.Gson;
-import com.nis.client.handlers.HelloHandler;
-import com.nis.shared.Request;
-import com.nis.shared.Response;
-import com.nis.client.SessionHandler;
-
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.HashMap;
+
+import com.google.gson.Gson;
+import com.nis.client.handlers.ClientWaveHandler;
+import com.nis.client.handlers.HelloHandler;
+import com.nis.shared.Request;
+import com.nis.shared.Response;
 
 
 public class RequestHandler extends Thread {
@@ -19,7 +20,7 @@ public class RequestHandler extends Thread {
 		= new HashMap<String,Class<? extends Handle> >();
 	static {
 		callMap.put("hello", HelloHandler.class);
-		
+		callMap.put("client_wave",ClientWaveHandler.class);
 	}
 	
 	private final static int buf_size = 4096;
@@ -48,8 +49,10 @@ public class RequestHandler extends Thread {
 		    String method = request.method;
 		    Class<? extends Handle> handleType 
 		    	= RequestHandler.callMap.get(method);
+		    InetSocketAddress address = new InetSocketAddress(clientSocket.getInetAddress(),
+					clientSocket.getPort());
 		    Handle handle = handleType.newInstance();
-		    String result = handle.handle(sessionHandler, request.params);
+		    String result = handle.handle(sessionHandler, request.params, address);
 		    
 		    Response response = new Response(result, request.id, 0);
 		    outToClient.writeBytes(gson.toJson(response) + "\n");

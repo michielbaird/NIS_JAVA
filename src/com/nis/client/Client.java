@@ -6,22 +6,19 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.net.InetSocketAddress;
 
 import com.google.gson.Gson;
 import com.nis.shared.Request;
 import com.nis.shared.Response;
-import com.nis.client.SessionHandler;
+import com.nis.shared.requests.ClientWave;
 import com.nis.shared.requests.GetSessionKey;
-import com.nis.shared.requests.Hello;	
+import com.nis.shared.requests.Hello;
 import com.nis.shared.requests.Wave;
 import com.nis.shared.response.GetSessionKeyResult;
 import com.nis.shared.response.HelloResult;
@@ -39,8 +36,8 @@ public class Client {
 	private final String clientHandle;
 	private final Gson gson;
 	private final Random random;
-	private Map userList;
 	private int id;
+	private final Timer timer;
 
 	public Client(String handle, int port) {
 		this.id = 1;
@@ -49,6 +46,7 @@ public class Client {
 		this.sessionHandler = new SessionHandler();
 		this.gson = new Gson();
 		this.random = new Random();
+		this.timer =  new Timer();
 		try {
 			this.clientListener = new ClientListener(sessionHandler, port);
 		} catch (IOException e) {
@@ -56,8 +54,7 @@ public class Client {
 			System.exit(1);
 		}
 		clientListener.start();
-		Timer waveDelay =  new Timer();
-		waveDelay.schedule(new TimerTask() {
+		timer.schedule(new TimerTask() {
 			@Override
 			public void run() {
 				waveToServer();
@@ -69,17 +66,39 @@ public class Client {
 		Wave wave =  new Wave(clientHandle,clientPort);
 		String result = sendRequest(serverAddress, serverPort, "wave", gson.toJson(wave));
 		WaveResult waveResult =  gson.fromJson(result, WaveResult.class);
-		userList = gson.fromJson(waveResult.userListJson, Map.class);
-		System.err.println(userList);
+		boolean waved = sessionHandler.hasUserList();
+		sessionHandler.addUserList(waveResult.userListJson);
+		if (!waved) {
+			timer.schedule(new TimerTask() {
+				@Override
+				public void run() {
+					waveToClients();
+				}
+			}, 100);
+		}
+		
+	}
+
+	private void waveToClients() {
+		for (Object client : sessionHandler.getClientList()) {
+			String handle = (String)client;
+			if (!handle.equals(clientHandle)) {
+				InetSocketAddress clientAddress = sessionHandler.getPeerAddress(handle);
+				if (clientAddress != null) {
+					ClientWave wave = new ClientWave(clientHandle, clientPort);
+					sendRequest(clientAddress.getHostName(), 
+							clientAddress.getPort(), "client_wave", gson.toJson(wave));
+					
+				}
+			}
+		}
 	}
 
 	public void Handshake(String handle) {
-		if (handle != clientHandle && userList != null && userList.containsKey(handle)) {
+		InetSocketAddress clientAddress = sessionHandler.getPeerAddress(handle);
+		if (clientAddress != null) {
 			int nonceA = random.nextInt();
-			Map address = (Map)userList.get(handle);
-			String addr = (String)address.get("addr");
-			int port = ((Double)address.get("port")).intValue();
-			int nonceB = sayHello(addr, port, nonceA);
+			int nonceB = sayHello(clientAddress.getHostName(), clientAddress.getPort(), nonceA);
 			GetSessionKeyResult getSessionKeyResult = getKey(handle, 
 					nonceA, nonceB);
 		}
@@ -134,8 +153,7 @@ public class Client {
 		}
 		return result;
 	}
-	
-	
+
 	public static void main(String argv[]) throws Exception
 	 {
 		Scanner scanner;
