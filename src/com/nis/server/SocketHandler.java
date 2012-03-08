@@ -40,7 +40,6 @@ public class SocketHandler extends Thread {
 			
 	        BufferedReader inFromClient = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 			DataOutputStream outToClient = new DataOutputStream(clientSocket.getOutputStream());
-		    CharArrayWriter data = new CharArrayWriter();
 		    String receiveString;
 		    receiveString = inFromClient.readLine();
 		    
@@ -52,12 +51,12 @@ public class SocketHandler extends Thread {
 					break;
 				}
 		    }
-		    receiveString = data.toString().trim();
+		    receiveString = data.toString().trim();*/
 		
 			Request request = gson.fromJson(receiveString, Request.class);
 			String method = request.method;
 			Class<? extends Handle> handleType 
-	    		= SocketHandler.callMap.get(method);*/
+	    		= SocketHandler.callMap.get(method);
 			
 			InetSocketAddress incoming = new InetSocketAddress(clientSocket.getInetAddress(),
 						clientSocket.getPort());
@@ -66,7 +65,7 @@ public class SocketHandler extends Thread {
 			String result = handle.handle(request.params, incoming, serverInfo);
 			
 			Response response =  new Response(result, request.id, 0);
-			outToClient.writeBytes(gson.toJson(response));
+			outToClient.writeBytes(gson.toJson(response) + "\n");
 			outToClient.flush();
 			outToClient.close();
 			

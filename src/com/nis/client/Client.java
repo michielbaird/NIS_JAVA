@@ -2,6 +2,7 @@ package com.nis.client;
 
 import java.io.BufferedReader;
 import java.io.CharArrayWriter;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -107,26 +108,16 @@ public class Client {
 
 	private String sendRequest(String address, int port, 
 			String method, String params) {
-		//char buf[] = new char[buf_size];
-		//int ret;
 		Request request = new Request(method, id, params);
 		String result = null;
 		try {
 			Socket clientSocket = new Socket();
-			//clientSocket.bind(new InetSocketAddress(clientPort+1));
 			clientSocket.connect(new InetSocketAddress(address,port));
-			PrintWriter outToClient = new PrintWriter(
-					clientSocket.getOutputStream(), true);
+			DataOutputStream outToHost = new DataOutputStream(clientSocket.getOutputStream());
 			BufferedReader inFromHost = new BufferedReader(
 					new InputStreamReader(clientSocket.getInputStream()));
-			outToClient.write(gson.toJson(request));
-			outToClient.flush();
-
-			/*CharArrayWriter data = new CharArrayWriter();
-			while ((ret = inFromClient.read(buf, 0, buf_size)) != -1)
-		    {
-		      data.write(buf, 0, ret);
-		    }*/
+			outToHost.writeBytes(gson.toJson(request) + "\n");
+			outToHost.flush();
 			String receiveString = inFromHost.readLine();
 			Response response = gson.fromJson(receiveString, Response.class);
 			clientSocket.close();
