@@ -1,7 +1,10 @@
 package com.nis.client;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
@@ -15,12 +18,15 @@ import com.google.gson.Gson;
 import com.nis.client.DataTransferCallback.TransferParameters;
 import com.nis.shared.Request;
 import com.nis.shared.Response;
+import com.nis.shared.interactive.SendFileConfirm;
 import com.nis.shared.requests.ClientWave;
 import com.nis.shared.requests.GetSessionKey;
 import com.nis.shared.requests.Hello;
+import com.nis.shared.requests.SendFile;
 import com.nis.shared.requests.Wave;
 import com.nis.shared.response.GetSessionKeyResult;
 import com.nis.shared.response.HelloResult;
+import com.nis.shared.response.SendFileResult;
 import com.nis.shared.response.WaveResult;
 
 public class Client {
@@ -91,6 +97,43 @@ public class Client {
 					
 				}
 			}
+		}
+	}
+
+	public void sendFileToClient(String handle, String fileName) {
+		final File file =  new File(fileName);
+		SendFile sendFile = new SendFile(file.getName(), file.length());
+		DataTransferCallback callback = new DataTransferCallback() {
+			@Override
+			public void transferData(TransferParameters parameters) {
+				String response;
+				try {
+					response = parameters.inFromHost.readLine();
+					SendFileConfirm confirm = gson.fromJson(response, SendFileConfirm.class);
+					if (confirm.accept) {
+						byte [] byteArray = new byte[buf_size];
+						FileInputStream fis = new FileInputStream(file);
+						BufferedInputStream bis = new BufferedInputStream(fis);
+						long fileSizeRemaining = file.length();
+						while (fileSizeRemaining > 0) {
+							int readSize = fileSizeRemaining > buf_size ? 
+									buf_size : (int)fileSizeRemaining;
+							fileSizeRemaining -= readSize;
+							bis.read(byteArray,0,readSize);
+							parameters.outToHost.write(byteArray,0,readSize);
+							// TODO(michielbaird): Add progress callback.
+						}
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}	
+			}
+		};
+		InetSocketAddress address = sessionHandler.getPeerAddress(handle);
+		String result = sendRequest(address.getHostName(), address.getPort(), "send_file", gson.toJson(sendFile), callback);
+		SendFileResult sendFileResult =  gson.fromJson(result, SendFileResult.class);
+		if (sendFileResult.equals("sucess")) {
+			System.out.println("File transfer successful.");
 		}
 	}
 
@@ -174,10 +217,21 @@ public class Client {
 		Client client = new Client(handle, localport);
 
 		while (true) {
+			String option;
 			String remoteHandle;
-			System.out.print("Enter the user handle: ");
+			System.out.print("Enter \"file\" or \"handshake\": ");
+			option = scanner.next();
+			System.out.print("Enter handle: ");
 			remoteHandle = scanner.next();
-			client.Handshake(remoteHandle);
+			if (option.equals("handshake")) {
+				client.Handshake(remoteHandle);
+			} else {
+				String fileName;
+				System.out.print("Enter filename: ");
+				fileName = scanner.next();
+				client.sendFileToClient(remoteHandle, fileName);
+			}
+			
 		}
 	 }
 }

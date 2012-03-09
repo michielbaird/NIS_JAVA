@@ -12,6 +12,7 @@ import com.google.gson.Gson;
 import com.nis.client.Handle.HandleParameters;
 import com.nis.client.handlers.ClientWaveHandler;
 import com.nis.client.handlers.HelloHandler;
+import com.nis.client.handlers.SendFileHandler;
 import com.nis.shared.Request;
 import com.nis.shared.Response;
 
@@ -22,9 +23,8 @@ public class RequestHandler extends Thread {
 	static {
 		callMap.put("hello", HelloHandler.class);
 		callMap.put("client_wave",ClientWaveHandler.class);
+		callMap.put("send_file", SendFileHandler.class);
 	}
-	
-	private final static int buf_size = 4096;
 	
 	private Socket clientSocket;
 	private SessionHandler sessionHandler;
@@ -54,7 +54,7 @@ public class RequestHandler extends Thread {
 					clientSocket.getPort());
 		    Handle handle = handleType.newInstance();
 		    HandleParameters parameters =  new HandleParameters(request.params, address
-		    		, sessionHandler, inFromHost, outToHost);
+		    		, sessionHandler, inFromHost, clientSocket.getInputStream(), outToHost);
 		    String result = handle.handle(parameters);
 		    
 		    Response response = new Response(result, request.id, 0);
