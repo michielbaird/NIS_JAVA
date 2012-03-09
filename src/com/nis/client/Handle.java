@@ -19,8 +19,7 @@ public interface Handle {
 			this.sessionHandler = sessionHandler;
 			this.inFromHost = inFromHost;
 			this.outToHost = outToHost;
-			
 		}
 	}
-	public String handle(SessionHandler sessionHandler, String request, InetSocketAddress source);
+	public String handle(HandleParameters parameters);
 }
