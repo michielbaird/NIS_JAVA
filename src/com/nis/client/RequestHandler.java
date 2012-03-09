@@ -1,20 +1,18 @@
 package com.nis.client;
 
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.util.HashMap;
+
 import com.google.gson.Gson;
 import com.nis.client.handlers.ClientWaveHandler;
 import com.nis.client.handlers.HelloHandler;
 import com.nis.shared.Request;
 import com.nis.shared.Response;
-import com.nis.client.SessionHandler;
-
-import java.io.BufferedReader;
-import java.io.CharArrayWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.util.HashMap;
 
 
 public class RequestHandler extends Thread {
@@ -39,23 +37,13 @@ public class RequestHandler extends Thread {
 	public void run() {
 		
 		Gson gson = new Gson();
-		char buf[] = new char[buf_size];
-		int ret;
+
 		try {
 			BufferedReader inFromClient = new BufferedReader(new 
 					InputStreamReader(clientSocket.getInputStream()));
-			PrintWriter outToClient = new PrintWriter(
-					clientSocket.getOutputStream());
-		    CharArrayWriter data = new CharArrayWriter();
-		    
-		    while ((ret = inFromClient.read(buf, 0, buf_size)) != -1)
-		    {
-		      data.write(buf, 0, ret);
-		      if (buf[ret-1] == 0) {
-		    	  break;
-		      }
-		    }
-		    String receiveString = data.toString().trim();
+			DataOutputStream outToClient = new DataOutputStream(clientSocket.getOutputStream());
+
+		    String receiveString = inFromClient.readLine();
 		    
 		    Request request = gson.fromJson(receiveString, Request.class);
 		    String method = request.method;
@@ -67,7 +55,7 @@ public class RequestHandler extends Thread {
 		    String result = handle.handle(sessionHandler, request.params, address);
 		    
 		    Response response = new Response(result, request.id, 0);
-		    outToClient.write(gson.toJson(response));
+		    outToClient.writeBytes(gson.toJson(response) + "\n");
 		    outToClient.flush();
 		    clientSocket.close();
 		    

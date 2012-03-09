@@ -4,7 +4,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 
-public class Server  {
+public class Server {
 	private static ServerSocket incomingSocket;
 	
 	public static void main(String [] argv) {
@@ -18,7 +18,7 @@ public class Server  {
 		while (true) {
 			try {
 				Socket clientSocket =  incomingSocket.accept();
-				SocketHandler handler =  new SocketHandler(clientSocket, serverInfo);
+				SocketHandler handler = new SocketHandler(clientSocket, serverInfo);
 				handler.start();
 			} catch (Exception e) {
 				

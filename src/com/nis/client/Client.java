@@ -2,6 +2,7 @@ package com.nis.client;
 
 import java.io.BufferedReader;
 import java.io.CharArrayWriter;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -81,7 +82,7 @@ public class Client {
 	private void waveToClients() {
 		for (Object client : sessionHandler.getClientList()) {
 			String handle = (String)client;
-			if (handle != clientHandle) {
+			if (!handle.equals(clientHandle)) {
 				InetSocketAddress clientAddress = sessionHandler.getPeerAddress(handle);
 				if (clientAddress != null) {
 					ClientWave wave = new ClientWave(clientHandle, clientPort);
@@ -126,27 +127,17 @@ public class Client {
 
 	private String sendRequest(String address, int port, 
 			String method, String params) {
-		char buf[] = new char[buf_size];
-		int ret;
 		Request request = new Request(method, id, params);
 		String result = null;
 		try {
 			Socket clientSocket = new Socket();
-			//clientSocket.bind(new InetSocketAddress(clientPort+1));
 			clientSocket.connect(new InetSocketAddress(address,port));
-			PrintWriter outToClient = new PrintWriter(
-					clientSocket.getOutputStream(), true);
-			BufferedReader inFromClient = new BufferedReader(
+			DataOutputStream outToHost = new DataOutputStream(clientSocket.getOutputStream());
+			BufferedReader inFromHost = new BufferedReader(
 					new InputStreamReader(clientSocket.getInputStream()));
-			outToClient.write(gson.toJson(request) + "\0");
-			outToClient.flush();
-
-			CharArrayWriter data = new CharArrayWriter();
-			while ((ret = inFromClient.read(buf, 0, buf_size)) != -1)
-		    {
-		      data.write(buf, 0, ret);
-		    }
-			String receiveString = data.toString();
+			outToHost.writeBytes(gson.toJson(request) + "\n");
+			outToHost.flush();
+			String receiveString = inFromHost.readLine();
 			Response response = gson.fromJson(receiveString, Response.class);
 			clientSocket.close();
 			if (response.id != id++) {
