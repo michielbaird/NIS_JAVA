@@ -9,8 +9,10 @@ import java.net.Socket;
 import java.util.HashMap;
 
 import com.google.gson.Gson;
+import com.nis.client.Handle.HandleParameters;
 import com.nis.client.handlers.ClientWaveHandler;
 import com.nis.client.handlers.HelloHandler;
+import com.nis.client.handlers.SendFileHandler;
 import com.nis.shared.Request;
 import com.nis.shared.Response;
 
@@ -21,9 +23,8 @@ public class RequestHandler extends Thread {
 	static {
 		callMap.put("hello", HelloHandler.class);
 		callMap.put("client_wave",ClientWaveHandler.class);
+		callMap.put("send_file", SendFileHandler.class);
 	}
-	
-	private final static int buf_size = 4096;
 	
 	private Socket clientSocket;
 	private SessionHandler sessionHandler;
@@ -39,11 +40,11 @@ public class RequestHandler extends Thread {
 		Gson gson = new Gson();
 
 		try {
-			BufferedReader inFromClient = new BufferedReader(new 
+			BufferedReader inFromHost = new BufferedReader(new 
 					InputStreamReader(clientSocket.getInputStream()));
-			DataOutputStream outToClient = new DataOutputStream(clientSocket.getOutputStream());
+			DataOutputStream outToHost = new DataOutputStream(clientSocket.getOutputStream());
 
-		    String receiveString = inFromClient.readLine();
+		    String receiveString = inFromHost.readLine();
 		    
 		    Request request = gson.fromJson(receiveString, Request.class);
 		    String method = request.method;
@@ -52,11 +53,13 @@ public class RequestHandler extends Thread {
 		    InetSocketAddress address = new InetSocketAddress(clientSocket.getInetAddress(),
 					clientSocket.getPort());
 		    Handle handle = handleType.newInstance();
-		    String result = handle.handle(sessionHandler, request.params, address);
+		    HandleParameters parameters =  new HandleParameters(request.params, address
+		    		, sessionHandler, inFromHost, clientSocket.getInputStream(), outToHost);
+		    String result = handle.handle(parameters);
 		    
 		    Response response = new Response(result, request.id, 0);
-		    outToClient.writeBytes(gson.toJson(response) + "\n");
-		    outToClient.flush();
+		    outToHost.writeBytes(gson.toJson(response) + "\n");
+		    outToHost.flush();
 		    clientSocket.close();
 		    
 		} catch (IOException e) {

@@ -1,11 +1,12 @@
 package com.nis.client;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
-import java.io.CharArrayWriter;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Random;
@@ -14,14 +15,18 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import com.google.gson.Gson;
+import com.nis.client.DataTransferCallback.TransferParameters;
 import com.nis.shared.Request;
 import com.nis.shared.Response;
+import com.nis.shared.interactive.SendFileConfirm;
 import com.nis.shared.requests.ClientWave;
 import com.nis.shared.requests.GetSessionKey;
 import com.nis.shared.requests.Hello;
+import com.nis.shared.requests.SendFile;
 import com.nis.shared.requests.Wave;
 import com.nis.shared.response.GetSessionKeyResult;
 import com.nis.shared.response.HelloResult;
+import com.nis.shared.response.SendFileResult;
 import com.nis.shared.response.WaveResult;
 
 public class Client {
@@ -64,7 +69,8 @@ public class Client {
 
 	private void waveToServer() {
 		Wave wave =  new Wave(clientHandle,clientPort);
-		String result = sendRequest(serverAddress, serverPort, "wave", gson.toJson(wave));
+		String result = sendRequest(serverAddress, serverPort, "wave",
+				gson.toJson(wave), null);
 		WaveResult waveResult =  gson.fromJson(result, WaveResult.class);
 		boolean waved = sessionHandler.hasUserList();
 		sessionHandler.addUserList(waveResult.userListJson);
@@ -87,10 +93,47 @@ public class Client {
 				if (clientAddress != null) {
 					ClientWave wave = new ClientWave(clientHandle, clientPort);
 					sendRequest(clientAddress.getHostName(), 
-							clientAddress.getPort(), "client_wave", gson.toJson(wave));
+							clientAddress.getPort(), "client_wave", gson.toJson(wave), null);
 					
 				}
 			}
+		}
+	}
+
+	public void sendFileToClient(String handle, String fileName) {
+		final File file =  new File(fileName);
+		SendFile sendFile = new SendFile(file.getName(), file.length());
+		DataTransferCallback callback = new DataTransferCallback() {
+			@Override
+			public void transferData(TransferParameters parameters) {
+				String response;
+				try {
+					response = parameters.inFromHost.readLine();
+					SendFileConfirm confirm = gson.fromJson(response, SendFileConfirm.class);
+					if (confirm.accept) {
+						byte [] byteArray = new byte[buf_size];
+						FileInputStream fis = new FileInputStream(file);
+						BufferedInputStream bis = new BufferedInputStream(fis);
+						long fileSizeRemaining = file.length();
+						while (fileSizeRemaining > 0) {
+							int readSize = fileSizeRemaining > buf_size ? 
+									buf_size : (int)fileSizeRemaining;
+							fileSizeRemaining -= readSize;
+							bis.read(byteArray,0,readSize);
+							parameters.outToHost.write(byteArray,0,readSize);
+							// TODO(michielbaird): Add progress callback.
+						}
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}	
+			}
+		};
+		InetSocketAddress address = sessionHandler.getPeerAddress(handle);
+		String result = sendRequest(address.getHostName(), address.getPort(), "send_file", gson.toJson(sendFile), callback);
+		SendFileResult sendFileResult =  gson.fromJson(result, SendFileResult.class);
+		if (sendFileResult.equals("sucess")) {
+			System.out.println("File transfer successful.");
 		}
 	}
 
@@ -109,7 +152,7 @@ public class Client {
 	private int sayHello(String address, int port, int nonceA) {
 		Hello hello = new Hello(clientHandle, nonceA);
 		String result = sendRequest(address, port, "hello",
-				gson.toJson(hello));
+				gson.toJson(hello),null);
 		HelloResult helloResult = gson.fromJson(result, HelloResult.class);
 		return helloResult.nonce;
 		
@@ -119,14 +162,14 @@ public class Client {
 		GetSessionKey getSessionKey = new GetSessionKey(clientHandle, 
 				handle, nonceA, nonceB);
 		String result = sendRequest(serverAddress, serverPort, 
-				"get_session_key", gson.toJson(getSessionKey));
+				"get_session_key", gson.toJson(getSessionKey), null);
 		GetSessionKeyResult getSessionKeyResult = gson.fromJson(result,
 				GetSessionKeyResult.class);
 		return getSessionKeyResult;
 	}
 
 	private String sendRequest(String address, int port, 
-			String method, String params) {
+			String method, String params, DataTransferCallback callback) {
 		Request request = new Request(method, id, params);
 		String result = null;
 		try {
@@ -137,6 +180,10 @@ public class Client {
 					new InputStreamReader(clientSocket.getInputStream()));
 			outToHost.writeBytes(gson.toJson(request) + "\n");
 			outToHost.flush();
+			if (callback != null){
+				TransferParameters parameters = new TransferParameters(inFromHost, outToHost);
+				callback.transferData(parameters);
+			}
 			String receiveString = inFromHost.readLine();
 			Response response = gson.fromJson(receiveString, Response.class);
 			clientSocket.close();
@@ -170,10 +217,21 @@ public class Client {
 		Client client = new Client(handle, localport);
 
 		while (true) {
+			String option;
 			String remoteHandle;
-			System.out.print("Enter the user handle: ");
+			System.out.print("Enter \"file\" or \"handshake\": ");
+			option = scanner.next();
+			System.out.print("Enter handle: ");
 			remoteHandle = scanner.next();
-			client.Handshake(remoteHandle);
+			if (option.equals("handshake")) {
+				client.Handshake(remoteHandle);
+			} else {
+				String fileName;
+				System.out.print("Enter filename: ");
+				fileName = scanner.next();
+				client.sendFileToClient(remoteHandle, fileName);
+			}
+			
 		}
 	 }
 }
