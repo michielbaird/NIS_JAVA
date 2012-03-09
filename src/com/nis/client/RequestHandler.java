@@ -13,6 +13,7 @@ import com.nis.client.Handle.HandleParameters;
 import com.nis.client.handlers.ClientWaveHandler;
 import com.nis.client.handlers.HelloHandler;
 import com.nis.client.handlers.SendFileHandler;
+import com.nis.shared.ErrorMessages;
 import com.nis.shared.Request;
 import com.nis.shared.Response;
 
@@ -25,7 +26,7 @@ public class RequestHandler extends Thread {
 		callMap.put("client_wave",ClientWaveHandler.class);
 		callMap.put("send_file", SendFileHandler.class);
 	}
-	
+
 	private Socket clientSocket;
 	private SessionHandler sessionHandler;
 	
@@ -42,22 +43,32 @@ public class RequestHandler extends Thread {
 		try {
 			BufferedReader inFromHost = new BufferedReader(new 
 					InputStreamReader(clientSocket.getInputStream()));
-			DataOutputStream outToHost = new DataOutputStream(clientSocket.getOutputStream());
+			DataOutputStream outToHost = new DataOutputStream(
+					clientSocket.getOutputStream());
 
 		    String receiveString = inFromHost.readLine();
-		    
 		    Request request = gson.fromJson(receiveString, Request.class);
-		    String method = request.method;
-		    Class<? extends Handle> handleType 
-		    	= RequestHandler.callMap.get(method);
-		    InetSocketAddress address = new InetSocketAddress(clientSocket.getInetAddress(),
-					clientSocket.getPort());
-		    Handle handle = handleType.newInstance();
-		    HandleParameters parameters =  new HandleParameters(request.params, address
-		    		, sessionHandler, inFromHost, clientSocket.getInputStream(), outToHost);
-		    String result = handle.handle(parameters);
+		    Response response;
 		    
-		    Response response = new Response(result, request.id, 0);
+		    String checkSignature = request.from + request.method + request.id 
+		    		+ request.params;
+		    // TODO(henkjoubert): Verify the signature.
+		    boolean isSignatureValid = true;
+		    if (isSignatureValid) {
+			    String method = request.method;
+			    Class<? extends Handle> handleType 
+			    	= RequestHandler.callMap.get(method);
+			    InetSocketAddress address = new InetSocketAddress(
+			    		clientSocket.getInetAddress(), clientSocket.getPort());
+			    Handle handle = handleType.newInstance();
+			    HandleParameters parameters =  new HandleParameters(request.from,
+			    		request.params, address, sessionHandler, inFromHost,
+			    		clientSocket.getInputStream(), outToHost);
+			    String result = handle.handle(parameters);
+			    response = new Response(result, request.id, ErrorMessages.NoError);
+		    } else {
+		    	response = new Response("", request.id, ErrorMessages.SignatureMismatch);
+		    }
 		    outToHost.writeBytes(gson.toJson(response) + "\n");
 		    outToHost.flush();
 		    clientSocket.close();

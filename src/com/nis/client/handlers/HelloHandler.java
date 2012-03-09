@@ -11,7 +11,7 @@ public class HelloHandler implements Handle {
 	public String handle(HandleParameters parameters) {
 		Gson gson = new Gson();
 		Hello hello = gson.fromJson(parameters.request, Hello.class);
-		String handle = hello.handle;
+		String handle = parameters.handle;
 		int nonceA = hello.nonce;
 		int nonceB = parameters.sessionHandler.getNonceB(handle, nonceA);
 		HelloResult result = new HelloResult(nonceB);
