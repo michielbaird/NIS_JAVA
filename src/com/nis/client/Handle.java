@@ -7,15 +7,18 @@ import java.net.InetSocketAddress;
 
 public interface Handle {
 	public class HandleParameters {
+		public final String handle;
 		public final String request;
 		public final SessionHandler sessionHandler;
 		public final InetSocketAddress source;
 		public final BufferedReader inFromHost;
 		public final InputStream inputStream;
 		public final DataOutputStream outToHost;
-		public HandleParameters(String request, InetSocketAddress source,
-				SessionHandler sessionHandler, BufferedReader inFromHost,
-				InputStream inputStream, DataOutputStream outToHost){
+		public HandleParameters(String handle, String request, 
+				InetSocketAddress source, SessionHandler sessionHandler,
+				BufferedReader inFromHost, InputStream inputStream,
+				DataOutputStream outToHost){
+			this.handle = handle;
 			this.request = request;
 			this.source = source;
 			this.sessionHandler = sessionHandler;

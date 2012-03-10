@@ -16,6 +16,7 @@ import java.util.TimerTask;
 
 import com.google.gson.Gson;
 import com.nis.client.DataTransferCallback.TransferParameters;
+import com.nis.shared.ErrorMessages;
 import com.nis.shared.Request;
 import com.nis.shared.Response;
 import com.nis.shared.interactive.SendFileConfirm;
@@ -91,7 +92,7 @@ public class Client {
 			if (!handle.equals(clientHandle)) {
 				InetSocketAddress clientAddress = sessionHandler.getPeerAddress(handle);
 				if (clientAddress != null) {
-					ClientWave wave = new ClientWave(clientHandle, clientPort);
+					ClientWave wave = new ClientWave(clientPort);
 					sendRequest(clientAddress.getHostName(), 
 							clientAddress.getPort(), "client_wave", gson.toJson(wave), null);
 					
@@ -150,7 +151,7 @@ public class Client {
 	}
 
 	private int sayHello(String address, int port, int nonceA) {
-		Hello hello = new Hello(clientHandle, nonceA);
+		Hello hello = new Hello(nonceA);
 		String result = sendRequest(address, port, "hello",
 				gson.toJson(hello),null);
 		HelloResult helloResult = gson.fromJson(result, HelloResult.class);
@@ -170,7 +171,7 @@ public class Client {
 
 	private String sendRequest(String address, int port, 
 			String method, String params, DataTransferCallback callback) {
-		Request request = new Request(method, id, params);
+		Request request = new Request(clientHandle ,method, id, params);
 		String result = null;
 		try {
 			Socket clientSocket = new Socket();
@@ -187,10 +188,17 @@ public class Client {
 			String receiveString = inFromHost.readLine();
 			Response response = gson.fromJson(receiveString, Response.class);
 			clientSocket.close();
+			String verificationString = response.id + response.result;
+			// TODO(henkjoubert): Verify the signature.
+			boolean isValidSignature = true;
+
+			
 			if (response.id != id++) {
 				// ThrowID Mismatch.
-			} else if (response.error.equals(0)) {
-				// Throw Error.
+			} else if (response.error.equals(ErrorMessages.SignatureMismatch)) {
+				// Throw something wrong error.
+			} else if (!isValidSignature) {
+				// Throw invalid signature.
 			}
 			result = response.result;
 			clientSocket.close();
