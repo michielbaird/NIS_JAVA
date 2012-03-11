@@ -33,9 +33,11 @@ import com.nis.shared.response.WaveResult;
 public class Client {
 
 	private final static int buf_size = 4096;
-	private final static String serverAddress = "localhost";
-	private final static int serverPort = 8081;
+	private final static String defaultServerAddress = "localhost";
+	private final static int defaultServerPort = 8081;
 	
+	private final String serverAddress;
+	private final int serverPort;
 	private final int clientPort;
 	private final SessionHandler sessionHandler;
 	private ClientListener clientListener;
@@ -45,10 +47,12 @@ public class Client {
 	private int id;
 	private final Timer timer;
 
-	public Client(String handle, int port) {
+	public Client(String handle, int port, String serverAddress, int serverPort) {
 		this.id = 1;
 		this.clientPort = port;
 		this.clientHandle = handle;
+		this.serverAddress = serverAddress;
+		this.serverPort = serverPort;
 		this.sessionHandler = new SessionHandler();
 		this.gson = new Gson();
 		this.random = new Random();
@@ -162,7 +166,7 @@ public class Client {
 	private GetSessionKeyResult getKey(String handle, int nonceA, int nonceB) {
 		GetSessionKey getSessionKey = new GetSessionKey(clientHandle, 
 				handle, nonceA, nonceB);
-		String result = sendRequest(serverAddress, serverPort, 
+		String result = sendRequest(defaultServerAddress, defaultServerPort, 
 				"get_session_key", gson.toJson(getSessionKey), null);
 		GetSessionKeyResult getSessionKeyResult = gson.fromJson(result,
 				GetSessionKeyResult.class);
