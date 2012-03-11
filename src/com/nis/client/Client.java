@@ -41,19 +41,22 @@ public class Client {
 	private final int clientPort;
 	private final SessionHandler sessionHandler;
 	private ClientListener clientListener;
+	private ClientCallbacks callbacks;
 	private final String clientHandle;
 	private final Gson gson;
 	private final Random random;
 	private int id;
 	private final Timer timer;
 
-	public Client(String handle, int port, String serverAddress, int serverPort) {
+	public Client(String handle, int port, String serverAddress, int serverPort,
+			ClientCallbacks callbacks) {
 		this.id = 1;
 		this.clientPort = port;
 		this.clientHandle = handle;
 		this.serverAddress = serverAddress;
 		this.serverPort = serverPort;
 		this.sessionHandler = new SessionHandler();
+		this.callbacks = callbacks;
 		this.gson = new Gson();
 		this.random = new Random();
 		this.timer =  new Timer();
@@ -86,6 +89,9 @@ public class Client {
 					waveToClients();
 				}
 			}, 100);
+		}
+		if (callbacks != null) {
+			callbacks.onClientListReceived(sessionHandler.getClientList());
 		}
 		
 	}
@@ -166,7 +172,7 @@ public class Client {
 	private GetSessionKeyResult getKey(String handle, int nonceA, int nonceB) {
 		GetSessionKey getSessionKey = new GetSessionKey(clientHandle, 
 				handle, nonceA, nonceB);
-		String result = sendRequest(defaultServerAddress, defaultServerPort, 
+		String result = sendRequest(serverAddress, serverPort, 
 				"get_session_key", gson.toJson(getSessionKey), null);
 		GetSessionKeyResult getSessionKeyResult = gson.fromJson(result,
 				GetSessionKeyResult.class);
@@ -226,7 +232,8 @@ public class Client {
 		System.out.print("Enter the user handle: ");
 		handle = scanner.next();
 		System.out.println("handle: " + handle);
-		Client client = new Client(handle, localport);
+		Client client = new Client(handle, localport,
+				defaultServerAddress,defaultServerPort, null);
 
 		while (true) {
 			String option;

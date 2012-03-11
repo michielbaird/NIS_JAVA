@@ -15,7 +15,7 @@ public class SessionHandler {
 	private final Random random;
 	private final Gson gson;
 	
-	private Map<Object,Object> userList;
+	private Map<String,Object> userList;
 	private String clientHandle;
 
 	public SessionHandler() {
@@ -34,7 +34,7 @@ public class SessionHandler {
 			nonceMapHandler.remove(handle);
 		}
 		int nounceB = random.nextInt();
-		nonceMapHandler.put(handle,  new Pair<Integer,Integer>(nonceA,nounceB));
+		nonceMapHandler.put(handle, new Pair<Integer,Integer>(nonceA,nounceB));
 		return nounceB;
 	}
 
@@ -70,7 +70,7 @@ public class SessionHandler {
 		return userList != null;
 	}
 
-	public Set<Object> getClientList() {
+	public Set<String> getClientList() {
 		return userList.keySet();
 	}
 
