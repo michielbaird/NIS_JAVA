@@ -1,9 +1,15 @@
 package com.nis.shared;
 
-import java.security.*;
-import javax.crypto.*;
-import javax.crypto.spec.*;
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
+
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 public class KeyGen {
     public static SecretKey genKey () { 
@@ -19,34 +25,34 @@ public class KeyGen {
         return key;
     }
     
-    public static void writeKeyToFile (String fileName) throws FileNotFoundException {
+    public static boolean writeKeyToFile (String fileName) throws FileNotFoundException {
         FileOutputStream f = new FileOutputStream(fileName);
         try {
 			f.write(genKey().getEncoded());
+			return true;
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+        return false;
     }
 
     public static SecretKey getKeyFromFile(String fileName)  {
+    	SecretKey key = null;
         File f = new File(fileName);
         int len = (int) f.length();
+        byte [] encoded = new byte[len];
         FileInputStream fis = null;
 		try {
 			fis = new FileInputStream(f);
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-        byte [] encoded = new byte[len];
-        try {
+		
 			fis.read(encoded, 0, len);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
+			key = new SecretKeySpec(encoded, "AES");
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} 
+		catch (IOException e) {
 			e.printStackTrace();
 		}
-        SecretKey key = new SecretKeySpec(encoded, "AES");
         return key;
     }
 
@@ -54,7 +60,6 @@ public class KeyGen {
         try {
 			writeKeyToFile("test.key");
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
         System.out.println(getKeyFromFile("test.key").getEncoded());
