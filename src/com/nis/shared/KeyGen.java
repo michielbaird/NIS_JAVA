@@ -12,36 +12,36 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 public class KeyGen {
-    public static SecretKey genKey () { 
-        KeyGenerator kgen = null;
-        try {
-            kgen = KeyGenerator.getInstance("AES");
-        } catch (NoSuchAlgorithmException e) {
-            // this should not happen
-            e.printStackTrace();
-        }
-        kgen.init(256);
-        SecretKey key = kgen.generateKey();
-        return key;
-    }
-    
-    public static boolean writeKeyToFile (String fileName) throws FileNotFoundException {
-        FileOutputStream f = new FileOutputStream(fileName);
-        try {
+	public static SecretKey genKey () { 
+		KeyGenerator kgen = null;
+		try {
+			kgen = KeyGenerator.getInstance("AES");
+		} catch (NoSuchAlgorithmException e) {
+			// this should not happen
+			e.printStackTrace();
+		}
+		kgen.init(256);
+		SecretKey key = kgen.generateKey();
+		return key;
+	}
+
+	public static boolean writeKeyToFile (String fileName) throws FileNotFoundException {
+		FileOutputStream f = new FileOutputStream(fileName);
+		try {
 			f.write(genKey().getEncoded());
 			return true;
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-        return false;
-    }
+		return false;
+	}
 
-    public static SecretKey getKeyFromFile(String fileName)  {
-    	SecretKey key = null;
-        File f = new File(fileName);
-        int len = (int) f.length();
-        byte [] encoded = new byte[len];
-        FileInputStream fis = null;
+	public static SecretKey getKeyFromFile(String fileName)  {
+		SecretKey key = null;
+		File f = new File(fileName);
+		int len = (int) f.length();
+		byte [] encoded = new byte[len];
+		FileInputStream fis = null;
 		try {
 			fis = new FileInputStream(f);
 		
@@ -53,15 +53,15 @@ public class KeyGen {
 		catch (IOException e) {
 			e.printStackTrace();
 		}
-        return key;
-    }
+		return key;
+	}
 
-    public static void main (String argv[]) {
-        try {
+	public static void main (String argv[]) {
+		try {
 			writeKeyToFile("test.key");
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
-        System.out.println(getKeyFromFile("test.key").getEncoded());
-    }
+		System.out.println(getKeyFromFile("test.key").getEncoded());
+	}
 }
