@@ -233,7 +233,7 @@ public class Client {
 		}
 		return result;
 	}
-	
+
 	public static String getLocalIP() { 
 		try {
 		    InetAddress addr = InetAddress.getLocalHost();
@@ -269,17 +269,21 @@ public class Client {
 		while (true) {
 			String option;
 			String remoteHandle;
-			System.out.print("Enter \"file\" or \"handshake\": ");
+			System.out.print("Enter \"file\" or \"handshake\" or \"message\": ");
 			option = scanner.next();
 			System.out.print("Enter handle: ");
 			remoteHandle = scanner.next();
 			if (option.equals("handshake")) {
 				client.Handshake(remoteHandle);
-			} else {
+			} else if (option.equals("handshake")) {
 				String fileName;
 				System.out.print("Enter filename: ");
 				fileName = scanner.next();
 				client.sendFileToClient(remoteHandle, fileName);
+			} else if (option.equals("message")) {
+				System.out.print("Message: ");
+				String message = scanner.nextLine();
+				client.sendMessage(remoteHandle, message);
 			}
 			
 		}
