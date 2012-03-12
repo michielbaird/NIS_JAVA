@@ -14,8 +14,6 @@ import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import javax.net.SocketFactory;
 
@@ -28,6 +26,7 @@ import com.nis.shared.interactive.SendFileConfirm;
 import com.nis.shared.requests.ClientWave;
 import com.nis.shared.requests.GetSessionKey;
 import com.nis.shared.requests.Hello;
+import com.nis.shared.requests.Message;
 import com.nis.shared.requests.SendFile;
 import com.nis.shared.requests.Wave;
 import com.nis.shared.response.GetSessionKeyResult;
@@ -47,7 +46,6 @@ public class Client {
 	private final String clientAddress;
 	private final SessionHandler sessionHandler;
 	private ClientListener clientListener;
-	private ClientCallbacks callbacks;
 	private final String clientHandle;
 	private final Gson gson;
 	private final Random random;
@@ -61,8 +59,7 @@ public class Client {
 		this.clientHandle = handle;
 		this.serverAddress = serverAddress;
 		this.serverPort = serverPort;
-		this.sessionHandler = new SessionHandler();
-		this.callbacks = callbacks;
+		this.sessionHandler = new SessionHandler(callbacks);
 		this.gson = new Gson();
 		this.random = new Random();
 		try {
@@ -86,8 +83,9 @@ public class Client {
 		if (!waved) {
 			waveToClients();
 		}
-		if (callbacks != null) {
-			callbacks.onClientListReceived(sessionHandler.getClientList());
+		if (sessionHandler.getCallbacks() != null) {
+			sessionHandler.getCallbacks().onClientListReceived(
+					sessionHandler.getClientList());
 		}
 		
 	}
@@ -157,6 +155,22 @@ public class Client {
 					nonceA, nonceB);
 		}
 		return;
+		
+	}
+	
+	public void sendMessage(String handle, String message) {
+		Map<String,Object> clientAddress = sessionHandler.getPeerAddress(handle);
+		if (clientAddress != null) {
+			// TODO(jouberthenk): check key, negotiate key if not found.
+			
+			
+			//TODO(jouberthenk): encrypt message.
+			Message messageRequest = new Message(message);
+			
+			sendRequest((String)clientAddress.get("addr"), 
+					((Double)clientAddress.get("port")).intValue(),
+					"client_message", gson.toJson(messageRequest), null);
+		}
 		
 	}
 
