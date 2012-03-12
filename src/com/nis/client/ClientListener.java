@@ -1,8 +1,12 @@
 package com.nis.client;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+
+import javax.net.ServerSocketFactory;
 
 public class ClientListener extends Thread {
 	
@@ -10,7 +14,7 @@ public class ClientListener extends Thread {
 	private SessionHandler sessionHandler;
 	
 	public ClientListener(SessionHandler sessionHandler, int port) throws IOException {
-		serverSocket = new ServerSocket(port);
+		serverSocket = ServerSocketFactory.getDefault().createServerSocket(port);
 		this.sessionHandler = sessionHandler;
 	}
 	

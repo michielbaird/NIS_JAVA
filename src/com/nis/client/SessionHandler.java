@@ -44,14 +44,13 @@ public class SessionHandler {
 		System.err.println(userList);
 	}
 	
-	public InetSocketAddress getPeerAddress(String handle) {
+	@SuppressWarnings("unchecked")
+	public Map<String,Object> getPeerAddress(String handle) {
 		if (handle != clientHandle && userList != null &&
 					userList.containsKey(handle)) {
 			@SuppressWarnings("rawtypes")
 			Map address = (Map)userList.get(handle);
-			String addr = (String)address.get("addr");
-			int port = ((Double)address.get("port")).intValue();
-			return new InetSocketAddress(addr,port);
+			return (Map<String,Object>)address;
 		} else {
 			return null;
 		}
