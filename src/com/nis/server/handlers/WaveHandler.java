@@ -15,7 +15,7 @@ public class WaveHandler implements Handle {
 			ServerInfo serverInfo) {
 		Gson gson = new Gson();
 		Wave wave = gson.fromJson(request, Wave.class);
-		InetSocketAddress user = new InetSocketAddress(source.getHostName(),wave.port);
+		InetSocketAddress user = new InetSocketAddress(wave.address,wave.port);
 		serverInfo.addUser(wave.handle, user);
 		String userListJSon =  serverInfo.getUserListJson();
 		WaveResult waveResult = new WaveResult(userListJSon);

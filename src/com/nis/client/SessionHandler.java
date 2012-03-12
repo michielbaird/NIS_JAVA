@@ -15,7 +15,7 @@ public class SessionHandler {
 	private final Random random;
 	private final Gson gson;
 	
-	private Map<Object,Object> userList;
+	private Map<String,Object> userList;
 	private String clientHandle;
 
 	public SessionHandler() {
@@ -34,7 +34,7 @@ public class SessionHandler {
 			nonceMapHandler.remove(handle);
 		}
 		int nounceB = random.nextInt();
-		nonceMapHandler.put(handle,  new Pair<Integer,Integer>(nonceA,nounceB));
+		nonceMapHandler.put(handle, new Pair<Integer,Integer>(nonceA,nounceB));
 		return nounceB;
 	}
 
@@ -44,14 +44,13 @@ public class SessionHandler {
 		System.err.println(userList);
 	}
 	
-	public InetSocketAddress getPeerAddress(String handle) {
+	@SuppressWarnings("unchecked")
+	public Map<String,Object> getPeerAddress(String handle) {
 		if (handle != clientHandle && userList != null &&
 					userList.containsKey(handle)) {
 			@SuppressWarnings("rawtypes")
 			Map address = (Map)userList.get(handle);
-			String addr = (String)address.get("addr");
-			int port = ((Double)address.get("port")).intValue();
-			return new InetSocketAddress(addr,port);
+			return (Map<String,Object>)address;
 		} else {
 			return null;
 		}
@@ -70,7 +69,7 @@ public class SessionHandler {
 		return userList != null;
 	}
 
-	public Set<Object> getClientList() {
+	public Set<String> getClientList() {
 		return userList.keySet();
 	}
 

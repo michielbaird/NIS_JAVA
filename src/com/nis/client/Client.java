@@ -7,12 +7,17 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
+import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import javax.net.SocketFactory;
 
 import com.google.gson.Gson;
 import com.nis.client.DataTransferCallback.TransferParameters;
@@ -33,55 +38,56 @@ import com.nis.shared.response.WaveResult;
 public class Client {
 
 	private final static int buf_size = 4096;
-	private final static String serverAddress = "localhost";
-	private final static int serverPort = 8081;
+	private final static String defaultServerAddress = "192.168.0.5";
+	private final static int defaultServerPort = 8081;
 	
+	private final String serverAddress;
+	private final int serverPort;
 	private final int clientPort;
+	private final String clientAddress;
 	private final SessionHandler sessionHandler;
 	private ClientListener clientListener;
+	private ClientCallbacks callbacks;
 	private final String clientHandle;
 	private final Gson gson;
 	private final Random random;
 	private int id;
-	private final Timer timer;
 
-	public Client(String handle, int port) {
+	public Client(String handle,String address, int port, String serverAddress, int serverPort,
+			ClientCallbacks callbacks) {
 		this.id = 1;
 		this.clientPort = port;
+		this.clientAddress = address;
 		this.clientHandle = handle;
+		this.serverAddress = serverAddress;
+		this.serverPort = serverPort;
 		this.sessionHandler = new SessionHandler();
+		this.callbacks = callbacks;
 		this.gson = new Gson();
 		this.random = new Random();
-		this.timer =  new Timer();
 		try {
 			this.clientListener = new ClientListener(sessionHandler, port);
+			this.clientListener.start();
 		} catch (IOException e) {
 			System.err.println("Failed to set up client listener.");
 			System.exit(1);
 		}
-		clientListener.start();
-		timer.schedule(new TimerTask() {
-			@Override
-			public void run() {
-				waveToServer();
-			}
-		}, 500);
+		waveToServer();
+		
 	}
 
 	private void waveToServer() {
-		Wave wave =  new Wave(clientHandle,clientPort);
+		Wave wave =  new Wave(clientHandle,clientAddress,clientPort);
 		String result = sendRequest(serverAddress, serverPort, "wave",
 				gson.toJson(wave), null);
 		WaveResult waveResult =  gson.fromJson(result, WaveResult.class);
 		boolean waved = sessionHandler.hasUserList();
 		sessionHandler.addUserList(waveResult.userListJson);
 		if (!waved) {
-			timer.schedule(new TimerTask() {
-				@Override
-				public void run() {
-					waveToClients();
-				}
-			}, 100);
+			waveToClients();
+		}
+		if (callbacks != null) {
+			callbacks.onClientListReceived(sessionHandler.getClientList());
 		}
 		
 	}
@@ -90,11 +96,12 @@ public class Client {
 		for (Object client : sessionHandler.getClientList()) {
 			String handle = (String)client;
 			if (!handle.equals(clientHandle)) {
-				InetSocketAddress clientAddress = sessionHandler.getPeerAddress(handle);
+				Map clientAddress = sessionHandler.getPeerAddress(handle);
 				if (clientAddress != null) {
 					ClientWave wave = new ClientWave(clientPort);
-					sendRequest(clientAddress.getHostName(), 
-							clientAddress.getPort(), "client_wave", gson.toJson(wave), null);
+					sendRequest((String)clientAddress.get("addr"), 
+							((Double)clientAddress.get("port")).intValue(),
+							"client_wave", gson.toJson(wave), null);
 					
 				}
 			}
@@ -130,8 +137,10 @@ public class Client {
 				}	
 			}
 		};
-		InetSocketAddress address = sessionHandler.getPeerAddress(handle);
-		String result = sendRequest(address.getHostName(), address.getPort(), "send_file", gson.toJson(sendFile), callback);
+		Map address = sessionHandler.getPeerAddress(handle);
+		String result = sendRequest((String)address.get("addr"), 
+				((Double)address.get("port")).intValue(),
+				"send_file", gson.toJson(sendFile), callback);
 		SendFileResult sendFileResult =  gson.fromJson(result, SendFileResult.class);
 		if (sendFileResult.equals("sucess")) {
 			System.out.println("File transfer successful.");
@@ -139,10 +148,11 @@ public class Client {
 	}
 
 	public void Handshake(String handle) {
-		InetSocketAddress clientAddress = sessionHandler.getPeerAddress(handle);
+		Map<String,Object> clientAddress = sessionHandler.getPeerAddress(handle);
 		if (clientAddress != null) {
 			int nonceA = random.nextInt();
-			int nonceB = sayHello(clientAddress.getHostName(), clientAddress.getPort(), nonceA);
+			int nonceB = sayHello((String)clientAddress.get("addr"),
+					((Double)clientAddress.get("port")).intValue(), nonceA);
 			GetSessionKeyResult getSessionKeyResult = getKey(handle, 
 					nonceA, nonceB);
 		}
@@ -174,7 +184,7 @@ public class Client {
 		Request request = new Request(clientHandle ,method, id, params);
 		String result = null;
 		try {
-			Socket clientSocket = new Socket();
+			Socket clientSocket = SocketFactory.getDefault().createSocket();
 			clientSocket.connect(new InetSocketAddress(address,port));
 			DataOutputStream outToHost = new DataOutputStream(clientSocket.getOutputStream());
 			BufferedReader inFromHost = new BufferedReader(
@@ -204,9 +214,26 @@ public class Client {
 			clientSocket.close();
 			
 		} catch (IOException e) {
+			System.out.print(e);
 		
 		}
 		return result;
+	}
+	
+	public static String getLocalIP() { 
+		try {
+		    InetAddress addr = InetAddress.getLocalHost();
+		    // Get IP Address
+		    byte[] ipAddr = addr.getAddress();
+		    String address = ipAddr[0] + "";
+		    for (int i = 1;i < 4;++i){
+		    	address += "." + ipAddr[i];
+		    }
+		    return address;
+		} catch (UnknownHostException e) {
+			
+		}
+		return null;
 	}
 
 	public static void main(String argv[]) throws Exception
@@ -222,7 +249,8 @@ public class Client {
 		System.out.print("Enter the user handle: ");
 		handle = scanner.next();
 		System.out.println("handle: " + handle);
-		Client client = new Client(handle, localport);
+		Client client = new Client(handle, getLocalIP(), localport,
+				defaultServerAddress,defaultServerPort, null);
 
 		while (true) {
 			String option;
