@@ -9,13 +9,15 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import javax.net.SocketFactory;
 
@@ -28,6 +30,7 @@ import com.nis.shared.interactive.SendFileConfirm;
 import com.nis.shared.requests.ClientWave;
 import com.nis.shared.requests.GetSessionKey;
 import com.nis.shared.requests.Hello;
+import com.nis.shared.requests.Message;
 import com.nis.shared.requests.SendFile;
 import com.nis.shared.requests.Wave;
 import com.nis.shared.response.GetSessionKeyResult;
@@ -38,7 +41,7 @@ import com.nis.shared.response.WaveResult;
 public class Client {
 
 	private final static int buf_size = 4096;
-	private final static String defaultServerAddress = "192.168.0.5";
+	private final static String defaultServerAddress = "137.158.60.219";
 	private final static int defaultServerPort = 8081;
 	
 	private final String serverAddress;
@@ -47,7 +50,6 @@ public class Client {
 	private final String clientAddress;
 	private final SessionHandler sessionHandler;
 	private ClientListener clientListener;
-	private ClientCallbacks callbacks;
 	private final String clientHandle;
 	private final Gson gson;
 	private final Random random;
@@ -61,8 +63,7 @@ public class Client {
 		this.clientHandle = handle;
 		this.serverAddress = serverAddress;
 		this.serverPort = serverPort;
-		this.sessionHandler = new SessionHandler();
-		this.callbacks = callbacks;
+		this.sessionHandler = new SessionHandler(callbacks);
 		this.gson = new Gson();
 		this.random = new Random();
 		try {
@@ -86,8 +87,9 @@ public class Client {
 		if (!waved) {
 			waveToClients();
 		}
-		if (callbacks != null) {
-			callbacks.onClientListReceived(sessionHandler.getClientList());
+		if (sessionHandler.getCallbacks() != null) {
+			sessionHandler.getCallbacks().onClientListReceived(
+					sessionHandler.getClientList());
 		}
 		
 	}
@@ -159,6 +161,22 @@ public class Client {
 		return;
 		
 	}
+	
+	public void sendMessage(String handle, String message) {
+		Map<String,Object> clientAddress = sessionHandler.getPeerAddress(handle);
+		if (clientAddress != null) {
+			// TODO(jouberthenk): check key, negotiate key if not found.
+			
+			
+			//TODO(jouberthenk): encrypt message.
+			Message messageRequest = new Message(message);
+			
+			sendRequest((String)clientAddress.get("addr"), 
+					((Double)clientAddress.get("port")).intValue(),
+					"client_message", gson.toJson(messageRequest), null);
+		}
+		
+	}
 
 	private int sayHello(String address, int port, int nonceA) {
 		Hello hello = new Hello(nonceA);
@@ -219,19 +237,21 @@ public class Client {
 		}
 		return result;
 	}
-	
+
 	public static String getLocalIP() { 
 		try {
-		    InetAddress addr = InetAddress.getLocalHost();
-		    // Get IP Address
-		    byte[] ipAddr = addr.getAddress();
-		    String address = ipAddr[0] + "";
-		    for (int i = 1;i < 4;++i){
-		    	address += "." + ipAddr[i];
-		    }
-		    return address;
-		} catch (UnknownHostException e) {
-			
+			Enumeration<NetworkInterface> nets = NetworkInterface.getNetworkInterfaces();
+			for (NetworkInterface interf = nets.nextElement();nets.hasMoreElements();) {
+				for (Enumeration<InetAddress> a = interf.getInetAddresses();a.hasMoreElements();) {
+					InetAddress addr = a.nextElement();
+					if (!addr.isLoopbackAddress() && !addr.getHostAddress().contains(":")) {
+						return addr.getHostAddress();
+					}
+				}
+			}
+		} catch (SocketException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 		return null;
 	}
@@ -240,7 +260,6 @@ public class Client {
 	 {
 		Scanner scanner;
 		scanner =  new Scanner(System.in);
-
 		int localport;
 		String handle;
 		System.out.print("Enter the local port: ");
@@ -249,23 +268,29 @@ public class Client {
 		System.out.print("Enter the user handle: ");
 		handle = scanner.next();
 		System.out.println("handle: " + handle);
-		Client client = new Client(handle, getLocalIP(), localport,
+		String localIP = getLocalIP();
+		System.out.println(localIP);		
+		Client client = new Client(handle, localIP, localport,
 				defaultServerAddress,defaultServerPort, null);
 
 		while (true) {
 			String option;
 			String remoteHandle;
-			System.out.print("Enter \"file\" or \"handshake\": ");
+			System.out.print("Enter \"file\" or \"handshake\" or \"message\": ");
 			option = scanner.next();
 			System.out.print("Enter handle: ");
 			remoteHandle = scanner.next();
 			if (option.equals("handshake")) {
 				client.Handshake(remoteHandle);
-			} else {
+			} else if (option.equals("handshake")) {
 				String fileName;
 				System.out.print("Enter filename: ");
 				fileName = scanner.next();
 				client.sendFileToClient(remoteHandle, fileName);
+			} else if (option.equals("message")) {
+				System.out.print("Message: ");
+				String message = scanner.nextLine();
+				client.sendMessage(remoteHandle, message);
 			}
 			
 		}

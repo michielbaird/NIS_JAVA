@@ -1,6 +1,5 @@
 package com.nis.client;
 
-import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -10,6 +9,7 @@ import com.google.gson.Gson;
 import com.google.gson.internal.Pair;
 
 public class SessionHandler {
+	private final ClientCallbacks callbacks;
 	private final HashMap<String, Pair<Integer,Integer> > nonceMapHandler;
 	private final HashMap<String, String> sessionKeys;
 	private final Random random;
@@ -18,7 +18,8 @@ public class SessionHandler {
 	private Map<String,Object> userList;
 	private String clientHandle;
 
-	public SessionHandler() {
+	public SessionHandler(ClientCallbacks callbacks) {
+		this.callbacks = callbacks;
 		nonceMapHandler = new HashMap<String, Pair<Integer, Integer>>();
 		sessionKeys = new HashMap<String, String>();
 		random = new Random();
@@ -62,6 +63,9 @@ public class SessionHandler {
 		entry.put("port", new Double(port));
 		
 		userList.put(handle, entry);
+		if (callbacks != null) {
+			callbacks.onClientListReceived(userList.keySet());
+		}
 		System.err.println(userList);
 	}
 	
@@ -71,6 +75,10 @@ public class SessionHandler {
 
 	public Set<String> getClientList() {
 		return userList.keySet();
+	}
+	
+	public ClientCallbacks getCallbacks() {
+		return callbacks;
 	}
 
 }
