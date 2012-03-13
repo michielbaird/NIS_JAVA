@@ -9,8 +9,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
@@ -37,7 +41,7 @@ import com.nis.shared.response.WaveResult;
 public class Client {
 
 	private final static int buf_size = 4096;
-	private final static String defaultServerAddress = "192.168.0.5";
+	private final static String defaultServerAddress = "137.158.60.219";
 	private final static int defaultServerPort = 8081;
 	
 	private final String serverAddress;
@@ -236,16 +240,18 @@ public class Client {
 
 	public static String getLocalIP() { 
 		try {
-		    InetAddress addr = InetAddress.getLocalHost();
-		    // Get IP Address
-		    byte[] ipAddr = addr.getAddress();
-		    String address = ipAddr[0] + "";
-		    for (int i = 1;i < 4;++i){
-		    	address += "." + ipAddr[i];
-		    }
-		    return address;
-		} catch (UnknownHostException e) {
-			
+			Enumeration<NetworkInterface> nets = NetworkInterface.getNetworkInterfaces();
+			for (NetworkInterface interf = nets.nextElement();nets.hasMoreElements();) {
+				for (Enumeration<InetAddress> a = interf.getInetAddresses();a.hasMoreElements();) {
+					InetAddress addr = a.nextElement();
+					if (!addr.isLoopbackAddress() && !addr.getHostAddress().contains(":")) {
+						return addr.getHostAddress();
+					}
+				}
+			}
+		} catch (SocketException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 		return null;
 	}
@@ -254,7 +260,6 @@ public class Client {
 	 {
 		Scanner scanner;
 		scanner =  new Scanner(System.in);
-
 		int localport;
 		String handle;
 		System.out.print("Enter the local port: ");
@@ -263,7 +268,9 @@ public class Client {
 		System.out.print("Enter the user handle: ");
 		handle = scanner.next();
 		System.out.println("handle: " + handle);
-		Client client = new Client(handle, getLocalIP(), localport,
+		String localIP = getLocalIP();
+		System.out.println(localIP);		
+		Client client = new Client(handle, localIP, localport,
 				defaultServerAddress,defaultServerPort, null);
 
 		while (true) {
