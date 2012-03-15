@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 import com.google.gson.Gson;
+import com.nis.client.ClientCallbacks.ConfirmResult;
 import com.nis.client.Handle;
 import com.nis.shared.interactive.SendFileConfirm;
 import com.nis.shared.requests.SendFile;
@@ -18,12 +19,36 @@ public class SendFileHandler implements Handle {
 		// TODO(michielbaird) Add confirmation.
 		Gson gson = new Gson();
 		SendFile sendFile = gson.fromJson(parameters.request, SendFile.class);
-		SendFileConfirm confirm = new SendFileConfirm(true);
+		SendFileConfirm confirm;
 		SendFileResult result = null;
-		parameters.outToHost.write(gson.toJson(confirm) + "\n");
-		parameters.outToHost.flush();
+		String fileName = null;
+		
+		if (parameters.sessionHandler.getCallbacks() != null) {
+			ConfirmResult confirmReq = parameters.sessionHandler
+				.getCallbacks()
+				.onIncomingFile(sendFile);
+			if (confirmReq.accept) {
+				fileName = confirmReq.fileName;
+				confirm = new SendFileConfirm(true);
+				parameters.outToHost.write(gson.toJson(confirm) + "\n");
+				parameters.outToHost.flush();
+			} else {
+				confirm = new SendFileConfirm(false);
+				parameters.outToHost.write(gson.toJson(confirm) + "\n");
+				parameters.outToHost.flush();
+				result = new SendFileResult("recjected");
+				return gson.toJson(result);
+			}
+		} else {
+			confirm = new SendFileConfirm(false);
+			parameters.outToHost.write(gson.toJson(confirm) + "\n");
+			parameters.outToHost.flush();
+			result = new SendFileResult("recjected");
+			return gson.toJson(result);
+		}
+
 		try {
-			FileOutputStream fos = new FileOutputStream("copy_" + sendFile.filename);
+			FileOutputStream fos = new FileOutputStream(fileName);
 			BufferedOutputStream bos = new BufferedOutputStream(fos);
 			long fileSizeRemaining = sendFile.fileSize;
 			while (fileSizeRemaining > 0) {
@@ -37,6 +62,10 @@ public class SendFileHandler implements Handle {
 				bos.flush();
 			}
 			bos.close();
+			if (parameters.sessionHandler.getCallbacks() != null) {
+				parameters.sessionHandler.getCallbacks()
+					.onFileReceived("copy_" + sendFile.filename);
+			}
 			result =  new SendFileResult("success");
 		
 		} catch (FileNotFoundException e) {

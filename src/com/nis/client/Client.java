@@ -130,7 +130,7 @@ public class Client {
 									buf_size : (int)fileSizeRemaining;
 							fileSizeRemaining -= readSize;
 							bis.read(byteArray,0,readSize);
-							parameters.outToHost.write(byteArray,0,readSize);
+							parameters.clientSocket.getOutputStream().write(byteArray,0,readSize);
 							// TODO(michielbaird): Add progress callback.
 						}
 					}
@@ -210,7 +210,7 @@ public class Client {
 			outToHost.writeBytes(gson.toJson(request) + "\n");
 			outToHost.flush();
 			if (callback != null){
-				TransferParameters parameters = new TransferParameters(inFromHost, outToHost);
+				TransferParameters parameters = new TransferParameters(clientSocket, inFromHost, outToHost);
 				callback.transferData(parameters);
 			}
 			String receiveString = inFromHost.readLine();
@@ -282,7 +282,7 @@ public class Client {
 			remoteHandle = scanner.next();
 			if (option.equals("handshake")) {
 				client.Handshake(remoteHandle);
-			} else if (option.equals("handshake")) {
+			} else if (option.equals("file")) {
 				String fileName;
 				System.out.print("Enter filename: ");
 				fileName = scanner.next();
