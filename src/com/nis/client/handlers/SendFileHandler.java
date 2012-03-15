@@ -20,11 +20,8 @@ public class SendFileHandler implements Handle {
 		SendFile sendFile = gson.fromJson(parameters.request, SendFile.class);
 		SendFileConfirm confirm = new SendFileConfirm(true);
 		SendFileResult result = null;
-		try {
-			parameters.outToHost.writeBytes(gson.toJson(confirm) + "\n");
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		parameters.outToHost.write(gson.toJson(confirm) + "\n");
+		parameters.outToHost.flush();
 		try {
 			FileOutputStream fos = new FileOutputStream("copy_" + sendFile.filename);
 			BufferedOutputStream bos = new BufferedOutputStream(fos);
@@ -33,10 +30,10 @@ public class SendFileHandler implements Handle {
 				byte [] byteArray = new byte[buffer_size];
 				int readSize = fileSizeRemaining > buffer_size ? 
 						buffer_size : (int)fileSizeRemaining;
-				fileSizeRemaining -= readSize;
-				parameters.inputStream.read(byteArray, 0, readSize);
+				int bytes_read = parameters.inputStream.read(byteArray, 0, readSize);
+				fileSizeRemaining -= bytes_read;
 				// TODO(michielbaird) Add progress callbacks.
-				bos.write(byteArray,0,readSize);
+				bos.write(byteArray,0,bytes_read);
 				bos.flush();
 			}
 			bos.close();

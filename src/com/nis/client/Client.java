@@ -289,7 +289,7 @@ public class Client {
 				client.sendFileToClient(remoteHandle, fileName);
 			} else if (option.equals("message")) {
 				System.out.print("Message: ");
-				String message = scanner.nextLine();
+				String message = "Hello it's a sucess";
 				client.sendMessage(remoteHandle, message);
 			}
 			

@@ -3,6 +3,7 @@ package com.nis.client;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.InputStream;
+import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 
 public interface Handle {
@@ -13,11 +14,11 @@ public interface Handle {
 		public final InetSocketAddress source;
 		public final BufferedReader inFromHost;
 		public final InputStream inputStream;
-		public final DataOutputStream outToHost;
+		public final PrintWriter outToHost;
 		public HandleParameters(String handle, String request, 
 				InetSocketAddress source, SessionHandler sessionHandler,
 				BufferedReader inFromHost, InputStream inputStream,
-				DataOutputStream outToHost){
+				PrintWriter outToHost){
 			this.handle = handle;
 			this.request = request;
 			this.source = source;
