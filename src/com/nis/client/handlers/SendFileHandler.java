@@ -36,14 +36,14 @@ public class SendFileHandler implements Handle {
 				confirm = new SendFileConfirm(false);
 				parameters.outToHost.write(gson.toJson(confirm) + "\n");
 				parameters.outToHost.flush();
-				result = new SendFileResult("recjected");
+				result = new SendFileResult("rejected");
 				return gson.toJson(result);
 			}
 		} else {
 			confirm = new SendFileConfirm(false);
 			parameters.outToHost.write(gson.toJson(confirm) + "\n");
 			parameters.outToHost.flush();
-			result = new SendFileResult("recjected");
+			result = new SendFileResult("rejected");
 			return gson.toJson(result);
 		}
 
