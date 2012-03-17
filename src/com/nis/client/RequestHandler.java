@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.HashMap;
@@ -45,7 +46,7 @@ public class RequestHandler extends Thread {
 		try {
 			BufferedReader inFromHost = new BufferedReader(new 
 					InputStreamReader(clientSocket.getInputStream()));
-			DataOutputStream outToHost = new DataOutputStream(
+			PrintWriter outToHost = new PrintWriter(
 					clientSocket.getOutputStream());
 
 		    String receiveString = inFromHost.readLine();
@@ -71,7 +72,8 @@ public class RequestHandler extends Thread {
 		    } else {
 		    	response = new Response("", request.id, ErrorMessages.SignatureMismatch);
 		    }
-		    outToHost.writeBytes(gson.toJson(response) + "\n");
+		    String responseString = gson.toJson(response);
+		    outToHost.write(responseString + "\n");
 		    outToHost.flush();
 		    clientSocket.close();
 		    
