@@ -5,8 +5,10 @@ import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
@@ -54,9 +56,10 @@ public class Client {
 	private final Gson gson;
 	private final Random random;
 	private int id;
+	private final ClientKeys clientKeys;
 
 	public Client(String handle,String address, int port, String serverAddress, int serverPort,
-			ClientCallbacks callbacks) {
+			ClientCallbacks callbacks, ClientKeys clientKeys) {
 		this.id = 1;
 		this.clientPort = port;
 		this.clientAddress = address;
@@ -64,6 +67,7 @@ public class Client {
 		this.serverAddress = serverAddress;
 		this.serverPort = serverPort;
 		this.sessionHandler = new SessionHandler(callbacks);
+		this.clientKeys = clientKeys;
 		this.gson = new Gson();
 		this.random = new Random();
 		try {
@@ -269,9 +273,26 @@ public class Client {
 		handle = scanner.next();
 		System.out.println("handle: " + handle);
 		String localIP = getLocalIP();
-		System.out.println(localIP);		
+		System.out.println(localIP);
+		// get the client keys
+		ClientKeys keys = null;
+		String keyfile = null;
+		try {
+			System.out.println("Enter the filename where keys are stored: ");
+			keyfile = scanner.next();
+			FileInputStream fin = new FileInputStream(keyfile);
+			ObjectInputStream keyin = new ObjectInputStream(fin);
+			keys = (ClientKeys) keyin.readObject();
+			keyin.close();
+			fin.close();
+		} catch (FileNotFoundException e) {
+			System.err.println("Could not open " + keyfile);
+			e.printStackTrace();
+			System.exit(-1);
+		}
+		
 		Client client = new Client(handle, localIP, localport,
-				defaultServerAddress,defaultServerPort, null);
+				defaultServerAddress,defaultServerPort, null, keys);
 
 		while (true) {
 			String option;
