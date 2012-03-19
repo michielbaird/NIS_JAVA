@@ -16,6 +16,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 //to simplify creating the client keys
 import com.nis.client.ClientKeys;
+import javax.xml.bind.DatatypeConverter;
 
 public class KeyGen {
 	public static SecretKey genKey () { 
@@ -95,6 +96,6 @@ public class KeyGen {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		System.out.println(getKeyFromFile(fname).getEncoded());
+		System.out.println( DatatypeConverter.printBase64Binary(result.masterkey.getEncoded()) );
 	}
 }
