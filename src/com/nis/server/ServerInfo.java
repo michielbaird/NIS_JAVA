@@ -6,6 +6,8 @@ import java.util.HashMap;
 import com.google.gson.Gson;
 
 public class ServerInfo {
+	public static final String KEYFILE = "server.keys";
+	
 	private final HashMap<String, InetSocketAddress> userList;
 	private final Gson gson;
 	

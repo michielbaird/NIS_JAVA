@@ -58,12 +58,12 @@ public class Client {
 	private int id;
 	private final ClientKeys clientKeys;
 
-	public Client(String handle,String address, int port, String serverAddress, int serverPort,
+	public Client(String address, int port, String serverAddress, int serverPort,
 			ClientCallbacks callbacks, ClientKeys clientKeys) {
 		this.id = 1;
 		this.clientPort = port;
 		this.clientAddress = address;
-		this.clientHandle = handle;
+		this.clientHandle = clientKeys.handle;
 		this.serverAddress = serverAddress;
 		this.serverPort = serverPort;
 		this.sessionHandler = new SessionHandler(callbacks);
@@ -140,7 +140,7 @@ public class Client {
 					}
 				} catch (IOException e) {
 					e.printStackTrace();
-				}	
+				}
 			}
 		};
 		Map address = sessionHandler.getPeerAddress(handle);
@@ -163,7 +163,6 @@ public class Client {
 					nonceA, nonceB);
 		}
 		return;
-		
 	}
 	
 	public void sendMessage(String handle, String message) {
@@ -179,7 +178,6 @@ public class Client {
 					((Double)clientAddress.get("port")).intValue(),
 					"client_message", gson.toJson(messageRequest), null);
 		}
-		
 	}
 
 	private int sayHello(String address, int port, int nonceA) {
@@ -188,7 +186,6 @@ public class Client {
 				gson.toJson(hello),null);
 		HelloResult helloResult = gson.fromJson(result, HelloResult.class);
 		return helloResult.nonce;
-		
 	}
 
 	private GetSessionKeyResult getKey(String handle, int nonceA, int nonceB) {
@@ -278,8 +275,7 @@ public class Client {
 		ClientKeys keys = null;
 		String keyfile = null;
 		try {
-			System.out.println("Enter the filename where keys are stored: ");
-			keyfile = scanner.next();
+			keyfile = handle + ".key";
 			FileInputStream fin = new FileInputStream(keyfile);
 			ObjectInputStream keyin = new ObjectInputStream(fin);
 			keys = (ClientKeys) keyin.readObject();
@@ -290,8 +286,7 @@ public class Client {
 			e.printStackTrace();
 			System.exit(-1);
 		}
-		
-		Client client = new Client(handle, localIP, localport,
+		Client client = new Client(localIP, localport,
 				defaultServerAddress,defaultServerPort, null, keys);
 
 		while (true) {
