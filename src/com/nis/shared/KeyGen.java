@@ -1,18 +1,13 @@
 package com.nis.shared;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.NotSerializableException;
 import java.io.ObjectOutputStream;
-import java.io.ObjectInputStream;
-import java.io.PrintWriter;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -22,11 +17,11 @@ import java.util.Scanner;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import javax.xml.bind.DatatypeConverter;
 //to simplify creating the client keys
 import com.google.gson.Gson;
 import com.nis.client.ClientKeys;
 import com.nis.server.ServerInfo;
-import javax.xml.bind.DatatypeConverter;
 
 public class KeyGen {
 	
@@ -115,7 +110,6 @@ public class KeyGen {
 		} catch (FileNotFoundException e) {
 			System.err.println(ServerInfo.KEYFILE + " could not be read");
 			e.printStackTrace();
-			//so we have now created a new server key file
 		} catch (IOException e) {
 			System.err.println(ServerInfo.KEYFILE + " could not be read");
 			e.printStackTrace();
