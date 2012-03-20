@@ -5,8 +5,10 @@ import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
@@ -54,16 +56,18 @@ public class Client {
 	private final Gson gson;
 	private final Random random;
 	private int id;
+	private final ClientKeys clientKeys;
 
-	public Client(String handle,String address, int port, String serverAddress, int serverPort,
-			ClientCallbacks callbacks) {
+	public Client(String address, int port, String serverAddress, int serverPort,
+			ClientCallbacks callbacks, ClientKeys clientKeys) {
 		this.id = 1;
 		this.clientPort = port;
 		this.clientAddress = address;
-		this.clientHandle = handle;
+		this.clientHandle = clientKeys.handle;
 		this.serverAddress = serverAddress;
 		this.serverPort = serverPort;
 		this.sessionHandler = new SessionHandler(callbacks);
+		this.clientKeys = clientKeys;
 		this.gson = new Gson();
 		this.random = new Random();
 		try {
@@ -136,7 +140,7 @@ public class Client {
 					}
 				} catch (IOException e) {
 					e.printStackTrace();
-				}	
+				}
 			}
 		};
 		Map address = sessionHandler.getPeerAddress(handle);
@@ -159,7 +163,6 @@ public class Client {
 					nonceA, nonceB);
 		}
 		return;
-		
 	}
 	
 	public void sendMessage(String handle, String message) {
@@ -175,7 +178,6 @@ public class Client {
 					((Double)clientAddress.get("port")).intValue(),
 					"client_message", gson.toJson(messageRequest), null);
 		}
-		
 	}
 
 	private int sayHello(String address, int port, int nonceA) {
@@ -184,7 +186,6 @@ public class Client {
 				gson.toJson(hello),null);
 		HelloResult helloResult = gson.fromJson(result, HelloResult.class);
 		return helloResult.nonce;
-		
 	}
 
 	private GetSessionKeyResult getKey(String handle, int nonceA, int nonceB) {
@@ -269,9 +270,24 @@ public class Client {
 		handle = scanner.next();
 		System.out.println("handle: " + handle);
 		String localIP = getLocalIP();
-		System.out.println(localIP);		
-		Client client = new Client(handle, localIP, localport,
-				defaultServerAddress,defaultServerPort, null);
+		System.out.println(localIP);
+		// get the client keys
+		ClientKeys keys = null;
+		String keyfile = null;
+		try {
+			keyfile = handle + ".key";
+			FileInputStream fin = new FileInputStream(keyfile);
+			ObjectInputStream keyin = new ObjectInputStream(fin);
+			keys = (ClientKeys) keyin.readObject();
+			keyin.close();
+			fin.close();
+		} catch (FileNotFoundException e) {
+			System.err.println("Could not open " + keyfile);
+			e.printStackTrace();
+			System.exit(-1);
+		}
+		Client client = new Client(localIP, localport,
+				defaultServerAddress,defaultServerPort, null, keys);
 
 		while (true) {
 			String option;
