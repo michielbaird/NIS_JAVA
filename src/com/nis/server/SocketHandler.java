@@ -14,7 +14,6 @@ import com.nis.shared.ErrorMessages;
 import com.nis.shared.Request;
 import com.nis.shared.Response;
 
-
 public class SocketHandler extends Thread {
 	public static HashMap<String, Class<? extends Handle>> callMap
 		= new HashMap<String,Class<? extends Handle> >();
@@ -39,30 +38,30 @@ public class SocketHandler extends Thread {
 					new InputStreamReader(clientSocket.getInputStream()));
 			DataOutputStream outToClient = new DataOutputStream(
 					clientSocket.getOutputStream());
-		    String receiveString;
-		    receiveString = inFromClient.readLine();
+			String receiveString;
+			receiveString = inFromClient.readLine();
 
 			Request request = gson.fromJson(receiveString, Request.class);
 			String checkSignature = request.from + request.method + request.id 
-		    		+ request.params;
-		    // TODO(henkjoubert): Verify the signature.
-		    boolean isSignatureValid = true;
-		    Response response;
-		    if (isSignatureValid) {
+					+ request.params;
+			// TODO(henkjoubert): Verify the signature.
+			boolean isSignatureValid = true;
+			Response response;
+			if (isSignatureValid) {
 				String method = request.method;
 				Class<? extends Handle> handleType 
 					= SocketHandler.callMap.get(method);
-	
+
 				InetSocketAddress incoming = new InetSocketAddress(
 						clientSocket.getInetAddress(), clientSocket.getPort());
-	
+
 				Handle handle = handleType.newInstance();
 				String result = handle.handle(request.params, incoming, serverInfo);
-	
+
 				response =  new Response(result, request.id, ErrorMessages.NoError);
-		    } else {
-		    	response = new Response("", request.id, ErrorMessages.SignatureMismatch);
-		    }
+			} else {
+				response = new Response("", request.id, ErrorMessages.SignatureMismatch);
+			}
 			outToClient.writeBytes(gson.toJson(response) + "\n");
 			outToClient.flush();
 			outToClient.close();

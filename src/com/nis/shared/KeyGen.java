@@ -1,18 +1,13 @@
 package com.nis.shared;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.NotSerializableException;
 import java.io.ObjectOutputStream;
-import java.io.ObjectInputStream;
-import java.io.PrintWriter;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -22,11 +17,10 @@ import java.util.Scanner;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-//to simplify creating the client keys
-import com.google.gson.Gson;
+import javax.xml.bind.DatatypeConverter;
+
 import com.nis.client.ClientKeys;
 import com.nis.server.ServerInfo;
-import javax.xml.bind.DatatypeConverter;
 
 public class KeyGen {
 	
@@ -38,7 +32,7 @@ public class KeyGen {
 			// this should not happen
 			e.printStackTrace();
 		}
-		kgen.init(256);
+		kgen.init(128);//Ducking American export laws making it difficult to use strong encryption
 		SecretKey key = kgen.generateKey();
 		return key;
 	}
@@ -78,7 +72,6 @@ public class KeyGen {
 	}
 
 	public static void main (String argv[]) {
-		Gson gson = new Gson();
 		Scanner scanner;
 		scanner = new Scanner(System.in);
 		String handle = "";
@@ -86,6 +79,7 @@ public class KeyGen {
 		handle = scanner.next();
 		String fname = handle + ".key";
 		ClientKeys result = new ClientKeys();
+		result.handle = handle;
 		result.keypair = genKeyPair();
 		result.masterkey = genKey();
 		//generate client key file
@@ -115,7 +109,6 @@ public class KeyGen {
 		} catch (FileNotFoundException e) {
 			System.err.println(ServerInfo.KEYFILE + " could not be read");
 			e.printStackTrace();
-			//so we have now created a new server key file
 		} catch (IOException e) {
 			System.err.println(ServerInfo.KEYFILE + " could not be read");
 			e.printStackTrace();

@@ -14,6 +14,7 @@ import com.nis.client.Handle.HandleParameters;
 import com.nis.client.handlers.ClientWaveHandler;
 import com.nis.client.handlers.HelloHandler;
 import com.nis.client.handlers.MessageHandler;
+import com.nis.client.handlers.SendClientKeyHandler;
 import com.nis.client.handlers.SendFileHandler;
 import com.nis.shared.ErrorMessages;
 import com.nis.shared.Request;
@@ -28,6 +29,7 @@ public class RequestHandler extends Thread {
 		callMap.put("client_wave",ClientWaveHandler.class);
 		callMap.put("send_file", SendFileHandler.class);
 		callMap.put("client_message",MessageHandler.class);
+		callMap.put("client_key", SendClientKeyHandler.class);
 	}
 
 	private Socket clientSocket;
