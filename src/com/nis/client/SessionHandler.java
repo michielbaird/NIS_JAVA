@@ -48,7 +48,6 @@ public class SessionHandler {
 	}
 	
 	public boolean checkNonces(String handle, int nonceA, int nonceB){
-		//TODO(henkjoubert) check the nonces
 		Pair<Integer, Integer> noncepair = new Pair<Integer, Integer>(nonceA, nonceB);
 		if (nonceMapHandler.get(handle).equals(noncepair)) {
 			nonceMapHandler.remove(handle);

@@ -13,7 +13,6 @@ public class MessageHandler implements Handle {
 		Gson gson = new Gson();
 		String from = parameters.handle;
 		Message messsage = gson.fromJson(parameters.request, Message.class);
-		// TODO(Henk): check decrypted message works
 		String decryptedMessage =  Crypter.decrypt(messsage.encryptedMessage,
 				parameters.sessionHandler.getKey(from));
 		if (parameters.sessionHandler.getCallbacks() != null) {
