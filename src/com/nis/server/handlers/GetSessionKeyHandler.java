@@ -44,9 +44,9 @@ public class GetSessionKeyHandler implements Handle {
 		SecretKey keyA = serverInfo.getUserKey(handleA);
 		SecretKey keyB = serverInfo.getUserKey(handleB);
 		SessionKeyEnvelope envA = new SessionKeyEnvelope(
-				saltA, nonceA, handleA, keyString);
+				saltA, nonceA, nonceB, handleA, keyString);
 		SessionKeyEnvelope envB = new SessionKeyEnvelope(
-				saltB, nonceB, handleB, keyString);
+				saltB, nonceA, nonceB, handleB, keyString);
 		String rawA = gson.toJson(envA);
 		String rawB = gson.toJson(envB);
 		byte [] encodedA = null;
@@ -58,6 +58,7 @@ public class GetSessionKeyHandler implements Handle {
 			IvParameterSpec ivspec = new IvParameterSpec(iv_bytes);
 			cA.init(Cipher.ENCRYPT_MODE, keyA, ivspec);
 			cB.init(Cipher.ENCRYPT_MODE, keyB, ivspec);
+			//optional set character set encoding for get bytes
 			encodedA = cA.doFinal(rawA.getBytes());
 			encodedB = cB.doFinal(rawB.getBytes());
 		} catch (NoSuchPaddingException e) {

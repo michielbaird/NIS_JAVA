@@ -2,15 +2,19 @@ package com.nis.shared;
 
 public class SessionKeyEnvelope {
 	public int salt;
-	public int nonce;
+	public int nonceA;
+	public int nonceB;
 	public String handle;
 	public String encodedSessionKey;
-
-	public SessionKeyEnvelope(int salt, int nonce, String handle,
+	
+	public SessionKeyEnvelope(int salt, int nonceA, int nonceB, String handle,
 			String encodedSessionKey) {
+		super();
 		this.salt = salt;
-		this.nonce = nonce;
+		this.nonceA = nonceA;
+		this.nonceB = nonceB;
 		this.handle = handle;
 		this.encodedSessionKey = encodedSessionKey;
 	}
+
 }

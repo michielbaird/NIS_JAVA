@@ -2,7 +2,7 @@ package com.nis.client.handlers;
 
 import com.google.gson.Gson;
 import com.nis.client.Handle;
-import com.nis.client.SessionHandler;
+import com.nis.shared.Crypter;
 import com.nis.shared.requests.Message;
 import com.nis.shared.response.MessageResult;
 
@@ -13,12 +13,12 @@ public class MessageHandler implements Handle {
 		Gson gson = new Gson();
 		String from = parameters.handle;
 		Message messsage = gson.fromJson(parameters.request, Message.class);
-		// TODO(Henk): Decrypt Message.
-		
-		String decryptedMessage =  messsage.encryptedMessage;
+		// TODO(Henk): check decrypted message works
+		String decryptedMessage =  Crypter.decrypt(messsage.encryptedMessage,
+				parameters.sessionHandler.getKey(from));
 		if (parameters.sessionHandler.getCallbacks() != null) {
 			parameters.sessionHandler.getCallbacks()
-			.onClientMessageRecieved(parameters.handle, decryptedMessage);
+				.onClientMessageRecieved(parameters.handle, decryptedMessage);
 		}
 		return gson.toJson(new MessageResult());
 	}

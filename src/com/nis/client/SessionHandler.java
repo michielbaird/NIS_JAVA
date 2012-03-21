@@ -5,26 +5,34 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import javax.crypto.SecretKey;
+
 import com.google.gson.Gson;
 import com.google.gson.internal.Pair;
 
 public class SessionHandler {
 	private final ClientCallbacks callbacks;
 	private final HashMap<String, Pair<Integer,Integer> > nonceMapHandler;
-	private final HashMap<String, String> sessionKeys;
+	private final HashMap<String, SecretKey> sessionKeys;
 	private final Random random;
 	private final Gson gson;
+	private final ClientKeys clientKeys;
 	
 	private Map<String,Object> userList;
 	private String clientHandle;
 
-	public SessionHandler(ClientCallbacks callbacks) {
+	public SessionHandler(ClientCallbacks callbacks, ClientKeys clientKeys) {
 		this.callbacks = callbacks;
+		this.clientKeys = clientKeys;
 		nonceMapHandler = new HashMap<String, Pair<Integer, Integer>>();
-		sessionKeys = new HashMap<String, String>();
+		sessionKeys = new HashMap<String, SecretKey>();
 		random = new Random();
 		gson = new Gson();
 		userList = null;
+	}
+	
+	public SecretKey getMasterKey() {
+		return clientKeys.masterkey;
 	}
 	
 	public int getNonceB(String handle, int nonceA) {
@@ -34,9 +42,32 @@ public class SessionHandler {
 		if (nonceMapHandler.containsKey(handle)) {
 			nonceMapHandler.remove(handle);
 		}
-		int nounceB = random.nextInt();
-		nonceMapHandler.put(handle, new Pair<Integer,Integer>(nonceA,nounceB));
-		return nounceB;
+		int nonceB = random.nextInt();
+		nonceMapHandler.put(handle, new Pair<Integer,Integer>(nonceA,nonceB));
+		return nonceB;
+	}
+	
+	public boolean checkNonces(String handle, int nonceA, int nonceB){
+		//TODO(henkjoubert) check the nonces
+		Pair<Integer, Integer> noncepair = new Pair<Integer, Integer>(nonceA, nonceB);
+		if (nonceMapHandler.get(handle).equals(noncepair)) {
+			nonceMapHandler.remove(handle);
+			return true;
+		}
+		return false;
+	}
+	
+	public boolean hasKey(String handle){
+		return sessionKeys.containsKey(handle);
+	}
+	
+	public SecretKey getKey(String handle){
+		return sessionKeys.get(handle);
+	}
+	
+	public void addKey(String handle, SecretKey key){
+		//removes the old key if it exists
+		sessionKeys.put(handle, key);
 	}
 
 	@SuppressWarnings("unchecked")

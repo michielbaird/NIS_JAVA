@@ -17,18 +17,26 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
+import java.util.Set;
 
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import javax.net.SocketFactory;
+import javax.xml.bind.DatatypeConverter;
 
 import com.google.gson.Gson;
+import com.nis.client.ClientCallbacks.ConfirmResult;
 import com.nis.client.DataTransferCallback.TransferParameters;
 import com.nis.shared.ErrorMessages;
 import com.nis.shared.Request;
 import com.nis.shared.Response;
+import com.nis.shared.SessionKeyEnvelope;
 import com.nis.shared.interactive.SendFileConfirm;
+import com.nis.shared.requests.ClientKeyRequest;
 import com.nis.shared.requests.ClientWave;
 import com.nis.shared.requests.GetSessionKey;
 import com.nis.shared.requests.Hello;
@@ -39,6 +47,7 @@ import com.nis.shared.response.GetSessionKeyResult;
 import com.nis.shared.response.HelloResult;
 import com.nis.shared.response.SendFileResult;
 import com.nis.shared.response.WaveResult;
+import com.nis.shared.Crypter;
 
 public class Client {
 
@@ -56,7 +65,6 @@ public class Client {
 	private final Gson gson;
 	private final Random random;
 	private int id;
-	private final ClientKeys clientKeys;
 
 	public Client(String address, int port, String serverAddress, int serverPort,
 			ClientCallbacks callbacks, ClientKeys clientKeys) {
@@ -66,8 +74,7 @@ public class Client {
 		this.clientHandle = clientKeys.handle;
 		this.serverAddress = serverAddress;
 		this.serverPort = serverPort;
-		this.sessionHandler = new SessionHandler(callbacks);
-		this.clientKeys = clientKeys;
+		this.sessionHandler = new SessionHandler(callbacks, clientKeys);
 		this.gson = new Gson();
 		this.random = new Random();
 		try {
@@ -108,7 +115,6 @@ public class Client {
 					sendRequest((String)clientAddress.get("addr"), 
 							((Double)clientAddress.get("port")).intValue(),
 							"client_wave", gson.toJson(wave), null);
-					
 				}
 			}
 		}
@@ -153,7 +159,7 @@ public class Client {
 		}
 	}
 
-	public void Handshake(String handle) {
+	public void handshake(String handle) {
 		Map<String,Object> clientAddress = sessionHandler.getPeerAddress(handle);
 		if (clientAddress != null) {
 			int nonceA = random.nextInt();
@@ -161,6 +167,17 @@ public class Client {
 					((Double)clientAddress.get("port")).intValue(), nonceA);
 			GetSessionKeyResult getSessionKeyResult = getKey(handle, 
 					nonceA, nonceB);
+			String jsonstring = Crypter.decrypt(getSessionKeyResult.encryptedKeyA, sessionHandler.getMasterKey());
+			SessionKeyEnvelope env = gson.fromJson(jsonstring, SessionKeyEnvelope.class);
+			SecretKey key = null;
+			if (env.nonceA == nonceA && env.nonceB == nonceB) {
+				byte [] key_bytes = DatatypeConverter.parseBase64Binary(env.encodedSessionKey);
+				key = new SecretKeySpec(key_bytes, "AES");
+				sessionHandler.addKey(handle, key);
+				ClientKeyRequest request = new ClientKeyRequest(getSessionKeyResult.encryptedKeyB);
+				sendRequest((String)clientAddress.get("addr"),((Double)clientAddress.get("port")).intValue(),
+						"client_key",gson.toJson(request),null);
+			}
 		}
 		return;
 	}
@@ -169,11 +186,15 @@ public class Client {
 		Map<String,Object> clientAddress = sessionHandler.getPeerAddress(handle);
 		if (clientAddress != null) {
 			// TODO(jouberthenk): check key, negotiate key if not found.
-			
-			
-			//TODO(jouberthenk): encrypt message.
-			Message messageRequest = new Message(message);
-			
+			SecretKey key = null;
+			if (sessionHandler.hasKey(handle)) {
+				key = sessionHandler.getKey(handle);
+			} else {
+				handshake(handle);
+				key = sessionHandler.getKey(handle);
+			}
+			Message messageRequest = new Message(
+					Crypter.encrypt(message, key) ); //LOOK I am encrypted now
 			sendRequest((String)clientAddress.get("addr"), 
 					((Double)clientAddress.get("port")).intValue(),
 					"client_message", gson.toJson(messageRequest), null);
@@ -258,7 +279,7 @@ public class Client {
 	}
 
 	public static void main(String argv[]) throws Exception
-	 {
+	{
 		Scanner scanner;
 		scanner =  new Scanner(System.in);
 		int localport;
@@ -286,8 +307,34 @@ public class Client {
 			e.printStackTrace();
 			System.exit(-1);
 		}
+		ClientCallbacks callbacks =  new ClientCallbacks() {
+			
+			@Override
+			public ConfirmResult onIncomingFile(SendFile sendFile) {
+				ConfirmResult result = new ConfirmResult();
+				result.accept= true;
+				result.fileName = "copy_" + sendFile.filename;
+				return result;
+			}
+			
+			@Override
+			public void onFileReceived(String filename) {
+				System.out.println("File Received: " + filename);
+				
+			}
+			
+			@Override
+			public void onClientMessageRecieved(String handle, String message) {
+				System.out.println(handle + ": " + message);
+			}
+			
+			@Override
+			public void onClientListReceived(Set<String> clientList) {
+				System.out.println("Client List Received");
+			}
+		};
 		Client client = new Client(localIP, localport,
-				defaultServerAddress,defaultServerPort, null, keys);
+				defaultServerAddress,defaultServerPort, callbacks, keys);
 
 		while (true) {
 			String option;
@@ -297,7 +344,7 @@ public class Client {
 			System.out.print("Enter handle: ");
 			remoteHandle = scanner.next();
 			if (option.equals("handshake")) {
-				client.Handshake(remoteHandle);
+				client.handshake(remoteHandle);
 			} else if (option.equals("file")) {
 				String fileName;
 				System.out.print("Enter filename: ");
@@ -308,7 +355,6 @@ public class Client {
 				String message = "Hello it's a sucess";
 				client.sendMessage(remoteHandle, message);
 			}
-			
 		}
-	 }
+	}
 }
