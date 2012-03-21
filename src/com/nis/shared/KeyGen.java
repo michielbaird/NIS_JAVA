@@ -18,8 +18,7 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import javax.xml.bind.DatatypeConverter;
-//to simplify creating the client keys
-import com.google.gson.Gson;
+
 import com.nis.client.ClientKeys;
 import com.nis.server.ServerInfo;
 
@@ -33,7 +32,7 @@ public class KeyGen {
 			// this should not happen
 			e.printStackTrace();
 		}
-		kgen.init(256);
+		kgen.init(128);//Ducking American export laws making it difficult to use strong encryption
 		SecretKey key = kgen.generateKey();
 		return key;
 	}
@@ -73,7 +72,6 @@ public class KeyGen {
 	}
 
 	public static void main (String argv[]) {
-		Gson gson = new Gson();
 		Scanner scanner;
 		scanner = new Scanner(System.in);
 		String handle = "";
@@ -81,6 +79,7 @@ public class KeyGen {
 		handle = scanner.next();
 		String fname = handle + ".key";
 		ClientKeys result = new ClientKeys();
+		result.handle = handle;
 		result.keypair = genKeyPair();
 		result.masterkey = genKey();
 		//generate client key file

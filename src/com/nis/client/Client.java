@@ -43,7 +43,7 @@ import com.nis.shared.response.WaveResult;
 public class Client {
 
 	private final static int buf_size = 4096;
-	private final static String defaultServerAddress = "137.158.60.219";
+	private final static String defaultServerAddress = "localhost";
 	private final static int defaultServerPort = 8081;
 	
 	private final String serverAddress;
