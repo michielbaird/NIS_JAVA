@@ -134,6 +134,9 @@ public class Client {
 	}
 
 	public void sendFileToClient(final String handle, String fileName) {
+		if (!sessionHandler.hasKey(handle)) {
+			handshake(handle);
+		}
 		final File file =  new File(fileName);
 		SendFile sendFile = new SendFile(file.getName(), file.length());
 		DataTransferCallback callback = new DataTransferCallback() {
