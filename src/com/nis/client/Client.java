@@ -31,6 +31,7 @@ import javax.xml.bind.DatatypeConverter;
 import com.google.gson.Gson;
 import com.nis.client.ClientCallbacks.ConfirmResult;
 import com.nis.client.DataTransferCallback.TransferParameters;
+import com.nis.shared.Base64Coder;
 import com.nis.shared.ErrorMessages;
 import com.nis.shared.Request;
 import com.nis.shared.Response;
@@ -171,7 +172,7 @@ public class Client {
 			SessionKeyEnvelope env = gson.fromJson(jsonstring, SessionKeyEnvelope.class);
 			SecretKey key = null;
 			if (env.nonceA == nonceA && env.nonceB == nonceB) {
-				byte [] key_bytes = DatatypeConverter.parseBase64Binary(env.encodedSessionKey);
+				byte [] key_bytes = Base64Coder.decode(env.encodedSessionKey);
 				key = new SecretKeySpec(key_bytes, "AES");
 				sessionHandler.addKey(handle, key);
 				ClientKeyRequest request = new ClientKeyRequest(getSessionKeyResult.encryptedKeyB);

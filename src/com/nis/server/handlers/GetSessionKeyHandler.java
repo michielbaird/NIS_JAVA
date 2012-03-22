@@ -12,13 +12,13 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
-import javax.xml.bind.DatatypeConverter;
 
 import com.google.gson.Gson;
 import com.nis.server.Handle;
 import com.nis.server.ServerInfo;
 import com.nis.shared.requests.GetSessionKey;
 import com.nis.shared.response.GetSessionKeyResult;
+import com.nis.shared.Base64Coder;
 import com.nis.shared.KeyGen;
 import com.nis.shared.SessionKeyEnvelope;
 
@@ -40,7 +40,7 @@ public class GetSessionKeyHandler implements Handle {
 		
 		// TODO(henkjoubert) check that encryption works
 		SecretKey sessionKey = KeyGen.genKey();
-		String keyString = DatatypeConverter.printBase64Binary(sessionKey.getEncoded());
+		String keyString =new String(Base64Coder.encode(sessionKey.getEncoded()));
 		SecretKey keyA = serverInfo.getUserKey(handleA);
 		SecretKey keyB = serverInfo.getUserKey(handleB);
 		SessionKeyEnvelope envA = new SessionKeyEnvelope(
@@ -81,8 +81,8 @@ public class GetSessionKeyHandler implements Handle {
 			e.printStackTrace();
 		}
 		
-		String encryptedKeyA = DatatypeConverter.printBase64Binary(encodedA) ;
-		String encryptedKeyB = DatatypeConverter.printBase64Binary(encodedB);
+		String encryptedKeyA = new String(Base64Coder.encode(encodedA));
+		String encryptedKeyB = new String(Base64Coder.encode(encodedB));
 		
 		GetSessionKeyResult result = new GetSessionKeyResult(encryptedKeyA,
 				encryptedKeyB);

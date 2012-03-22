@@ -8,9 +8,9 @@ import java.util.Scanner;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-import javax.xml.bind.DatatypeConverter;
 
 import com.google.gson.Gson;
+import com.nis.shared.Base64Coder;
 
 public class ServerInfo {
 	public static final String KEYFILE = "server.keys";
@@ -33,7 +33,7 @@ public class ServerInfo {
 		while (scanner.hasNext()) {
 			String user = scanner.next();
 			String encoded_key = scanner.next();
-			byte[] key_bytes = DatatypeConverter.parseBase64Binary(encoded_key);
+			byte[] key_bytes = Base64Coder.decode(encoded_key);
 			//SecretKey is just an interface, the spec converts it into a usable key
 			SecretKey key_spec = new SecretKeySpec(key_bytes, "AES");
 			userKeys.put(user, key_spec);

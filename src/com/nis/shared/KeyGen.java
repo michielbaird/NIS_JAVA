@@ -17,7 +17,6 @@ import java.util.Scanner;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-import javax.xml.bind.DatatypeConverter;
 
 import com.nis.client.ClientKeys;
 import com.nis.server.ServerInfo;
@@ -103,7 +102,7 @@ public class KeyGen {
 			File f = new File(ServerInfo.KEYFILE);
 			FileWriter fstream = new FileWriter(f, true);
 			BufferedWriter out = new BufferedWriter(fstream);
-			String tmp = DatatypeConverter.printBase64Binary(result.masterkey.getEncoded());
+			String tmp = new String(Base64Coder.encode(result.masterkey.getEncoded()));
 			out.write(handle + ' ' + tmp + '\n');
 			out.close();
 		} catch (FileNotFoundException e) {
@@ -113,6 +112,6 @@ public class KeyGen {
 			System.err.println(ServerInfo.KEYFILE + " could not be read");
 			e.printStackTrace();
 		}
-		System.out.println( DatatypeConverter.printBase64Binary(result.masterkey.getEncoded()) );
+		System.out.println( Base64Coder.encode(result.masterkey.getEncoded()) );
 	}
 }

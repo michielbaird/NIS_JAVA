@@ -10,11 +10,12 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
-import javax.xml.bind.DatatypeConverter;
+
 
 public class Crypter {
+
 	public static String decrypt(String base64EncodedString, SecretKey aesKey) {
-		byte [] raw_bytes = DatatypeConverter.parseBase64Binary(base64EncodedString);
+		byte [] raw_bytes = Base64Coder.decode(base64EncodedString);
 		byte [] decoded = null;
 		try {
 			Cipher c = Cipher.getInstance("AES/CBC/PKCS5Padding");
@@ -71,6 +72,6 @@ public class Crypter {
 			System.err.println("I fucked up with the ivspec :(");
 			e.printStackTrace();
 		}
-		return DatatypeConverter.printBase64Binary(encoded);
+		return new String(Base64Coder.encode(encoded));
 	}
 }
