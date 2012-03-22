@@ -28,5 +28,5 @@ public interface Handle {
 			this.outToHost = outToHost;
 		}
 	}
-	public String handle(HandleParameters parameters);
+	public String handle(HandleParameters parameters) throws DataTransferException;
 }

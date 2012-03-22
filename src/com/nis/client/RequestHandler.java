@@ -1,7 +1,6 @@
 package com.nis.client;
 
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -65,11 +64,19 @@ public class RequestHandler extends Thread {
 			    	= RequestHandler.callMap.get(method);
 			    InetSocketAddress address = new InetSocketAddress(
 			    		clientSocket.getInetAddress(), clientSocket.getPort());
-			    Handle handle = handleType.newInstance();
+		
+			    	Handle handle = handleType.newInstance();
+			    
 			    HandleParameters parameters =  new HandleParameters(request.from,
 			    		request.params, address, sessionHandler, inFromHost,
 			    		clientSocket.getInputStream(), outToHost);
-			    String result = handle.handle(parameters);
+			    String result = null;
+			    try {
+			    	result = handle.handle(parameters);
+			    } catch (DataTransferException e) {
+			    	clientSocket.close();
+			    	return;
+			    }
 			    response = new Response(result, request.id, ErrorMessages.NoError);
 		    } else {
 		    	response = new Response("", request.id, ErrorMessages.SignatureMismatch);

@@ -15,6 +15,9 @@ import java.net.NetworkInterface;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -23,7 +26,11 @@ import java.util.Random;
 import java.util.Scanner;
 import java.util.Set;
 
+import javax.crypto.Cipher;
+import javax.crypto.CipherOutputStream;
+import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.net.SocketFactory;
 import javax.xml.bind.DatatypeConverter;
@@ -31,6 +38,7 @@ import javax.xml.bind.DatatypeConverter;
 import com.google.gson.Gson;
 import com.nis.client.ClientCallbacks.ConfirmResult;
 import com.nis.client.DataTransferCallback.TransferParameters;
+import com.nis.shared.Base64Coder;
 import com.nis.shared.ErrorMessages;
 import com.nis.shared.Request;
 import com.nis.shared.Response;
@@ -120,7 +128,7 @@ public class Client {
 		}
 	}
 
-	public void sendFileToClient(String handle, String fileName) {
+	public void sendFileToClient(final String handle, String fileName) {
 		final File file =  new File(fileName);
 		SendFile sendFile = new SendFile(file.getName(), file.length());
 		DataTransferCallback callback = new DataTransferCallback() {
@@ -135,28 +143,40 @@ public class Client {
 						FileInputStream fis = new FileInputStream(file);
 						BufferedInputStream bis = new BufferedInputStream(fis);
 						long fileSizeRemaining = file.length();
+						
+						Cipher c = Cipher.getInstance("AES/CBC/PKCS5Padding");
+						byte [] iv_bytes =	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+						IvParameterSpec ivspec = new IvParameterSpec(iv_bytes);
+						c.init(Cipher.ENCRYPT_MODE, sessionHandler.getKey(handle), ivspec);
+						CipherOutputStream cos = new CipherOutputStream(parameters.clientSocket.getOutputStream(), c);
 						while (fileSizeRemaining > 0) {
 							int readSize = fileSizeRemaining > buf_size ? 
 									buf_size : (int)fileSizeRemaining;
 							fileSizeRemaining -= readSize;
 							bis.read(byteArray,0,readSize);
-							parameters.clientSocket.getOutputStream().write(byteArray,0,readSize);
+							cos.write(byteArray,0,readSize);
 							// TODO(michielbaird): Add progress callback.
 						}
+						cos.close();
 					}
 				} catch (IOException e) {
+					e.printStackTrace();
+				} catch (NoSuchAlgorithmException e) {
+					e.printStackTrace();
+				} catch (NoSuchPaddingException e) {
+					e.printStackTrace();
+				} catch (InvalidKeyException e) {
+					e.printStackTrace();
+				} catch (InvalidAlgorithmParameterException e) {
 					e.printStackTrace();
 				}
 			}
 		};
 		Map address = sessionHandler.getPeerAddress(handle);
-		String result = sendRequest((String)address.get("addr"), 
+		sendRequest((String)address.get("addr"), 
 				((Double)address.get("port")).intValue(),
 				"send_file", gson.toJson(sendFile), callback);
-		SendFileResult sendFileResult =  gson.fromJson(result, SendFileResult.class);
-		if (sendFileResult.equals("sucess")) {
-			System.out.println("File transfer successful.");
-		}
+		System.out.println("File transfer successful.");
 	}
 
 	public void handshake(String handle) {
@@ -171,7 +191,7 @@ public class Client {
 			SessionKeyEnvelope env = gson.fromJson(jsonstring, SessionKeyEnvelope.class);
 			SecretKey key = null;
 			if (env.nonceA == nonceA && env.nonceB == nonceB) {
-				byte [] key_bytes = DatatypeConverter.parseBase64Binary(env.encodedSessionKey);
+				byte [] key_bytes = Base64Coder.decode(env.encodedSessionKey);
 				key = new SecretKeySpec(key_bytes, "AES");
 				sessionHandler.addKey(handle, key);
 				ClientKeyRequest request = new ClientKeyRequest(getSessionKeyResult.encryptedKeyB);
@@ -234,6 +254,7 @@ public class Client {
 			if (callback != null){
 				TransferParameters parameters = new TransferParameters(clientSocket, inFromHost, outToHost);
 				callback.transferData(parameters);
+				return "";
 			}
 			String receiveString = inFromHost.readLine();
 			Response response = gson.fromJson(receiveString, Response.class);

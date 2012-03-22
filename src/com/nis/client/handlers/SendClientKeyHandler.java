@@ -6,6 +6,7 @@ import javax.xml.bind.DatatypeConverter;
 
 import com.google.gson.Gson;
 import com.nis.client.Handle;
+import com.nis.shared.Base64Coder;
 import com.nis.shared.Crypter;
 import com.nis.shared.SessionKeyEnvelope;
 import com.nis.shared.requests.ClientKeyRequest;
@@ -23,7 +24,7 @@ public class SendClientKeyHandler implements Handle {
 		SecretKey key = null;
 		boolean validnonces = parameters.sessionHandler.checkNonces(parameters.handle, env.nonceA, env.nonceB);
 		if (validnonces) {
-			byte [] key_bytes = DatatypeConverter.parseBase64Binary(env.encodedSessionKey);
+			byte [] key_bytes = Base64Coder.decode(env.encodedSessionKey);
 			key = new SecretKeySpec(key_bytes, "AES");
 			parameters.sessionHandler.addKey(parameters.handle, key);
 		}
