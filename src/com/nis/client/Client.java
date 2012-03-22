@@ -18,6 +18,8 @@ import java.net.UnknownHostException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.Signature;
+import java.security.SignatureException;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -97,9 +99,10 @@ public class Client {
 	}
 
 	private void waveToServer() {
-		Wave wave =  new Wave(clientHandle,clientAddress,clientPort);
+		Wave wave =  new Wave(clientHandle,clientAddress,clientPort,
+				new String( Base64Coder.encode(sessionHandler.getPubKey().getEncoded())) );
 		String result = sendRequest(serverAddress, serverPort, "wave",
-				gson.toJson(wave), null);
+				gson.toJson(wave), null, null);
 		WaveResult waveResult =  gson.fromJson(result, WaveResult.class);
 		boolean waved = sessionHandler.hasUserList();
 		sessionHandler.addUserList(waveResult.userListJson);
@@ -114,15 +117,17 @@ public class Client {
 	}
 
 	private void waveToClients() {
+		String publicKey = new String(Base64Coder.encode(sessionHandler.getPubKey().getEncoded()));
 		for (Object client : sessionHandler.getClientList()) {
 			String handle = (String)client;
 			if (!handle.equals(clientHandle)) {
 				Map clientAddress = sessionHandler.getPeerAddress(handle);
 				if (clientAddress != null) {
-					ClientWave wave = new ClientWave(clientPort);
-					sendRequest((String)clientAddress.get("addr"), 
+					
+					ClientWave wave = new ClientWave(clientPort, publicKey);
+					sendRequest((String)clientAddress.get("address"), 
 							((Double)clientAddress.get("port")).intValue(),
-							"client_wave", gson.toJson(wave), null);
+							"client_wave", gson.toJson(wave), null, handle);
 				}
 			}
 		}
@@ -173,9 +178,9 @@ public class Client {
 			}
 		};
 		Map address = sessionHandler.getPeerAddress(handle);
-		sendRequest((String)address.get("addr"), 
+		sendRequest((String)address.get("address"), 
 				((Double)address.get("port")).intValue(),
-				"send_file", gson.toJson(sendFile), callback);
+				"send_file", gson.toJson(sendFile), callback, handle);
 		System.out.println("File transfer successful.");
 	}
 
@@ -183,7 +188,7 @@ public class Client {
 		Map<String,Object> clientAddress = sessionHandler.getPeerAddress(handle);
 		if (clientAddress != null) {
 			int nonceA = random.nextInt();
-			int nonceB = sayHello((String)clientAddress.get("addr"),
+			int nonceB = sayHello(handle, (String)clientAddress.get("address"),
 					((Double)clientAddress.get("port")).intValue(), nonceA);
 			GetSessionKeyResult getSessionKeyResult = getKey(handle, 
 					nonceA, nonceB);
@@ -195,8 +200,8 @@ public class Client {
 				key = new SecretKeySpec(key_bytes, "AES");
 				sessionHandler.addKey(handle, key);
 				ClientKeyRequest request = new ClientKeyRequest(getSessionKeyResult.encryptedKeyB);
-				sendRequest((String)clientAddress.get("addr"),((Double)clientAddress.get("port")).intValue(),
-						"client_key",gson.toJson(request),null);
+				sendRequest((String)clientAddress.get("address"),((Double)clientAddress.get("port")).intValue(),
+						"client_key",gson.toJson(request),null, handle);
 			}
 		}
 		return;
@@ -205,7 +210,6 @@ public class Client {
 	public void sendMessage(String handle, String message) {
 		Map<String,Object> clientAddress = sessionHandler.getPeerAddress(handle);
 		if (clientAddress != null) {
-			// TODO(jouberthenk): check key, negotiate key if not found.
 			SecretKey key = null;
 			if (sessionHandler.hasKey(handle)) {
 				key = sessionHandler.getKey(handle);
@@ -215,16 +219,16 @@ public class Client {
 			}
 			Message messageRequest = new Message(
 					Crypter.encrypt(message, key) ); //LOOK I am encrypted now
-			sendRequest((String)clientAddress.get("addr"), 
+			sendRequest((String)clientAddress.get("address"), 
 					((Double)clientAddress.get("port")).intValue(),
-					"client_message", gson.toJson(messageRequest), null);
+					"client_message", gson.toJson(messageRequest), null, handle);
 		}
 	}
 
-	private int sayHello(String address, int port, int nonceA) {
+	private int sayHello(String handle, String address, int port, int nonceA) {
 		Hello hello = new Hello(nonceA);
 		String result = sendRequest(address, port, "hello",
-				gson.toJson(hello),null);
+				gson.toJson(hello),null, handle);
 		HelloResult helloResult = gson.fromJson(result, HelloResult.class);
 		return helloResult.nonce;
 	}
@@ -233,14 +237,14 @@ public class Client {
 		GetSessionKey getSessionKey = new GetSessionKey(clientHandle, 
 				handle, nonceA, nonceB);
 		String result = sendRequest(serverAddress, serverPort, 
-				"get_session_key", gson.toJson(getSessionKey), null);
+				"get_session_key", gson.toJson(getSessionKey), null, null);
 		GetSessionKeyResult getSessionKeyResult = gson.fromJson(result,
 				GetSessionKeyResult.class);
 		return getSessionKeyResult;
 	}
 
 	private String sendRequest(String address, int port, 
-			String method, String params, DataTransferCallback callback) {
+			String method, String params, DataTransferCallback callback, String handle) {
 		Request request = new Request(clientHandle ,method, id, params);
 		String result = null;
 		try {
@@ -249,6 +253,16 @@ public class Client {
 			DataOutputStream outToHost = new DataOutputStream(clientSocket.getOutputStream());
 			BufferedReader inFromHost = new BufferedReader(
 					new InputStreamReader(clientSocket.getInputStream()));
+			String signatureSrc = request.from + request.method + request.id 
+					+ request.params;
+			//sign
+			Signature signature = Signature.getInstance("SHA1withRSA");
+			signature.initSign(sessionHandler.getPrivKey());
+			byte [] toBeSigned = signatureSrc.getBytes();
+			signature.update(toBeSigned);
+			byte [] theSig = signature.sign();
+			String sigString = new String(Base64Coder.encode(theSig));
+			request.signature = sigString;
 			outToHost.writeBytes(gson.toJson(request) + "\n");
 			outToHost.flush();
 			if (callback != null){
@@ -260,10 +274,14 @@ public class Client {
 			Response response = gson.fromJson(receiveString, Response.class);
 			clientSocket.close();
 			String verificationString = response.id + response.result;
-			// TODO(henkjoubert): Verify the signature.
+			//verify the signature
 			boolean isValidSignature = true;
-
-			
+			if (handle != null) {
+				signature.initVerify(sessionHandler.getPublicKey(handle));
+				byte [] toBeVerified = verificationString.getBytes();
+				signature.update(toBeVerified);
+				isValidSignature = signature.verify(Base64Coder.decode(response.signature));
+			}
 			if (response.id != id++) {
 				// ThrowID Mismatch.
 			} else if (response.error.equals(ErrorMessages.SignatureMismatch)) {
@@ -277,6 +295,15 @@ public class Client {
 		} catch (IOException e) {
 			System.out.print(e);
 		
+		} catch (NoSuchAlgorithmException e) {
+			//we should have rsa
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SignatureException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 		return result;
 	}
@@ -356,7 +383,6 @@ public class Client {
 		};
 		Client client = new Client(localIP, localport,
 				defaultServerAddress,defaultServerPort, callbacks, keys);
-
 		while (true) {
 			String option;
 			String remoteHandle;

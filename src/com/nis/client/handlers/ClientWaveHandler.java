@@ -11,9 +11,8 @@ public class ClientWaveHandler implements Handle {
 	public String handle(HandleParameters parameters) {
 		Gson gson = new Gson();
 		ClientWave wave = gson.fromJson(parameters.request, ClientWave.class);
-
 		parameters.sessionHandler.addActiveUser(parameters.handle, 
-				parameters.source.getHostName(), wave.port);
+				parameters.source.getHostName(), wave.port, wave.publicKey);
 		ClientWaveResult waveResult = new ClientWaveResult();
 		
 		return gson.toJson(waveResult);
