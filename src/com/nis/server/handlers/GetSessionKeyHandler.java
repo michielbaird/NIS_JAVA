@@ -41,6 +41,7 @@ public class GetSessionKeyHandler implements Handle {
 		// TODO(henkjoubert) check that encryption works
 		SecretKey sessionKey = KeyGen.genKey();
 		String keyString =new String(Base64Coder.encode(sessionKey.getEncoded()));
+		System.out.println("Generating session key: " + keyString);
 		SecretKey keyA = serverInfo.getUserKey(handleA);
 		SecretKey keyB = serverInfo.getUserKey(handleB);
 		SessionKeyEnvelope envA = new SessionKeyEnvelope(
@@ -61,6 +62,7 @@ public class GetSessionKeyHandler implements Handle {
 			//optional set character set encoding for get bytes
 			encodedA = cA.doFinal(rawA.getBytes());
 			encodedB = cB.doFinal(rawB.getBytes());
+			
 		} catch (NoSuchPaddingException e) {
 			//should not happen
 		} catch (NoSuchAlgorithmException e) {
@@ -83,6 +85,8 @@ public class GetSessionKeyHandler implements Handle {
 		
 		String encryptedKeyA = new String(Base64Coder.encode(encodedA));
 		String encryptedKeyB = new String(Base64Coder.encode(encodedB));
+		System.out.println("Packing message for " + handleA + ": " + encryptedKeyA);
+		System.out.println("Packing message for " + handleB + ": " + encryptedKeyB);
 		
 		GetSessionKeyResult result = new GetSessionKeyResult(encryptedKeyA,
 				encryptedKeyB);

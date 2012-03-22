@@ -17,9 +17,10 @@ public class WaveHandler implements Handle {
 		Wave wave = gson.fromJson(request, Wave.class);
 		InetSocketAddress user = new InetSocketAddress(wave.address,wave.port);
 		serverInfo.addUser(wave.handle, user);
+		System.out.println("Adding user to userList");
 		String userListJSon =  serverInfo.getUserListJson();
 		WaveResult waveResult = new WaveResult(userListJSon);
-		
+		System.out.println("Sending online userList.");
 		return gson.toJson(waveResult);
 	}
 

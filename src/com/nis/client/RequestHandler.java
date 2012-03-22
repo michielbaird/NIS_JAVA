@@ -51,6 +51,7 @@ public class RequestHandler extends Thread {
 					clientSocket.getOutputStream());
 
 		    String receiveString = inFromHost.readLine();
+			System.err.println("Received Request: " + receiveString);
 		    Request request = gson.fromJson(receiveString, Request.class);
 		    Response response;
 		    
@@ -72,6 +73,7 @@ public class RequestHandler extends Thread {
 			    		clientSocket.getInputStream(), outToHost);
 			    String result = null;
 			    try {
+			    	System.err.println("Sending request to " + method + " handler");
 			    	result = handle.handle(parameters);
 			    } catch (DataTransferException e) {
 			    	clientSocket.close();
@@ -82,6 +84,7 @@ public class RequestHandler extends Thread {
 		    	response = new Response("", request.id, ErrorMessages.SignatureMismatch);
 		    }
 		    String responseString = gson.toJson(response);
+		    System.err.println("Sending reponse to client: " + responseString);
 		    outToHost.write(responseString + "\n");
 		    outToHost.flush();
 		    clientSocket.close();

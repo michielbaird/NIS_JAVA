@@ -40,7 +40,7 @@ public class SocketHandler extends Thread {
 					clientSocket.getOutputStream());
 			String receiveString;
 			receiveString = inFromClient.readLine();
-
+			System.out.println("Received Request: " + receiveString);
 			Request request = gson.fromJson(receiveString, Request.class);
 			String checkSignature = request.from + request.method + request.id 
 					+ request.params;
@@ -56,13 +56,15 @@ public class SocketHandler extends Thread {
 						clientSocket.getInetAddress(), clientSocket.getPort());
 
 				Handle handle = handleType.newInstance();
+				System.out.println("Sending Request to '"  + method + "' handler.");
 				String result = handle.handle(request.params, incoming, serverInfo);
-
 				response =  new Response(result, request.id, ErrorMessages.NoError);
 			} else {
 				response = new Response("", request.id, ErrorMessages.SignatureMismatch);
 			}
-			outToClient.writeBytes(gson.toJson(response) + "\n");
+			String responseString = gson.toJson(response);
+			System.out.println("Sending response to client: " + responseString);
+			outToClient.writeBytes(responseString+ "\n");
 			outToClient.flush();
 			outToClient.close();
 

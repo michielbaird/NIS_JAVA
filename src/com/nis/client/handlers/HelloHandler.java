@@ -13,6 +13,7 @@ public class HelloHandler implements Handle {
 		Hello hello = gson.fromJson(parameters.request, Hello.class);
 		String handle = parameters.handle;
 		int nonceA = hello.nonce;
+		System.err.println("Receiving nonce " + nonceA + " from " + handle);
 		int nonceB = parameters.sessionHandler.getNonceB(handle, nonceA);
 		HelloResult result = new HelloResult(nonceB);
 

@@ -98,12 +98,14 @@ public class Client {
 
 	private void waveToServer() {
 		Wave wave =  new Wave(clientHandle,clientAddress,clientPort);
+		System.err.println("Sending wave to server");
 		String result = sendRequest(serverAddress, serverPort, "wave",
 				gson.toJson(wave), null);
 		WaveResult waveResult =  gson.fromJson(result, WaveResult.class);
 		boolean waved = sessionHandler.hasUserList();
 		sessionHandler.addUserList(waveResult.userListJson);
 		if (!waved) {
+			System.err.println("Sending wave to present clients.");
 			waveToClients();
 		}
 		if (sessionHandler.getCallbacks() != null) {
@@ -129,16 +131,28 @@ public class Client {
 	}
 
 	public void sendFileToClient(final String handle, String fileName) {
+		SecretKey key = null;
+		System.err.println("Check if we have a key");
+		if (sessionHandler.hasKey(handle)) {
+			key = sessionHandler.getKey(handle);
+		} else {
+			System.err.println("Get key first");
+			handshake(handle);
+			key = sessionHandler.getKey(handle);
+		}
 		final File file =  new File(fileName);
+		System.err.println("Preparing file request: file: "+ file.getName() + "length: " + file.length() );
 		SendFile sendFile = new SendFile(file.getName(), file.length());
 		DataTransferCallback callback = new DataTransferCallback() {
 			@Override
 			public void transferData(TransferParameters parameters) {
 				String response;
 				try {
+					System.err.println("Wait for confirmation");
 					response = parameters.inFromHost.readLine();
 					SendFileConfirm confirm = gson.fromJson(response, SendFileConfirm.class);
 					if (confirm.accept) {
+						System.err.println("File accepted.");
 						byte [] byteArray = new byte[buf_size];
 						FileInputStream fis = new FileInputStream(file);
 						BufferedInputStream bis = new BufferedInputStream(fis);
@@ -148,7 +162,9 @@ public class Client {
 						byte [] iv_bytes =	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 						IvParameterSpec ivspec = new IvParameterSpec(iv_bytes);
 						c.init(Cipher.ENCRYPT_MODE, sessionHandler.getKey(handle), ivspec);
+						System.err.println("Prepare cipher stream.");
 						CipherOutputStream cos = new CipherOutputStream(parameters.clientSocket.getOutputStream(), c);
+						System.err.println("Sending file.");
 						while (fileSizeRemaining > 0) {
 							int readSize = fileSizeRemaining > buf_size ? 
 									buf_size : (int)fileSizeRemaining;
@@ -157,7 +173,10 @@ public class Client {
 							cos.write(byteArray,0,readSize);
 							// TODO(michielbaird): Add progress callback.
 						}
+						System.err.println("File sent.");
 						cos.close();
+					} else {
+						System.err.println("File rejected.");
 					}
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -183,20 +202,28 @@ public class Client {
 		Map<String,Object> clientAddress = sessionHandler.getPeerAddress(handle);
 		if (clientAddress != null) {
 			int nonceA = random.nextInt();
+			System.err.println("Generating nonce: " + nonceA);
+			System.err.println("Sending nonce to peer " + handle);
 			int nonceB = sayHello((String)clientAddress.get("addr"),
 					((Double)clientAddress.get("port")).intValue(), nonceA);
+			System.err.println("Recieved nonce: " + nonceB + " from " + handle);
+			System.err.println("Sending key request to server.");
 			GetSessionKeyResult getSessionKeyResult = getKey(handle, 
 					nonceA, nonceB);
 			String jsonstring = Crypter.decrypt(getSessionKeyResult.encryptedKeyA, sessionHandler.getMasterKey());
 			SessionKeyEnvelope env = gson.fromJson(jsonstring, SessionKeyEnvelope.class);
 			SecretKey key = null;
+			System.err.println("Decrypting recived key:" + jsonstring);
+			System.err.println("Received nonceA = " + env.nonceA + " nonceB = " +env.nonceB);
 			if (env.nonceA == nonceA && env.nonceB == nonceB) {
 				byte [] key_bytes = Base64Coder.decode(env.encodedSessionKey);
 				key = new SecretKeySpec(key_bytes, "AES");
 				sessionHandler.addKey(handle, key);
+				System.err.println("Sending encrypted key to " + handle);
 				ClientKeyRequest request = new ClientKeyRequest(getSessionKeyResult.encryptedKeyB);
 				sendRequest((String)clientAddress.get("addr"),((Double)clientAddress.get("port")).intValue(),
 						"client_key",gson.toJson(request),null);
+				System.err.println("Handshake complete.");
 			}
 		}
 		return;
@@ -207,14 +234,20 @@ public class Client {
 		if (clientAddress != null) {
 			// TODO(jouberthenk): check key, negotiate key if not found.
 			SecretKey key = null;
+			
+			System.err.println("Checking if we have a key.");
 			if (sessionHandler.hasKey(handle)) {
 				key = sessionHandler.getKey(handle);
 			} else {
+				System.err.println("Retrieve key first.");
 				handshake(handle);
 				key = sessionHandler.getKey(handle);
 			}
+			System.err.println("Message to send: " + message);
+			String encrypted = Crypter.encrypt(message, key);
+			System.err.println("Encrypted message: " + encrypted);
 			Message messageRequest = new Message(
-					Crypter.encrypt(message, key) ); //LOOK I am encrypted now
+					encrypted ); //LOOK I am encrypted now
 			sendRequest((String)clientAddress.get("addr"), 
 					((Double)clientAddress.get("port")).intValue(),
 					"client_message", gson.toJson(messageRequest), null);
@@ -249,7 +282,10 @@ public class Client {
 			DataOutputStream outToHost = new DataOutputStream(clientSocket.getOutputStream());
 			BufferedReader inFromHost = new BufferedReader(
 					new InputStreamReader(clientSocket.getInputStream()));
-			outToHost.writeBytes(gson.toJson(request) + "\n");
+			
+			String sendString = gson.toJson(request);
+			System.err.println("Sending: " + sendString + " to " + address );
+			outToHost.writeBytes(sendString + "\n");
 			outToHost.flush();
 			if (callback != null){
 				TransferParameters parameters = new TransferParameters(clientSocket, inFromHost, outToHost);
@@ -257,6 +293,7 @@ public class Client {
 				return "";
 			}
 			String receiveString = inFromHost.readLine();
+			System.err.println("Receiving string: " + receiveString + " from " + address );
 			Response response = gson.fromJson(receiveString, Response.class);
 			clientSocket.close();
 			String verificationString = response.id + response.result;

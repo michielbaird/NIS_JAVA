@@ -26,7 +26,6 @@ public class SendFileHandler implements Handle {
 	public static final int buffer_size = 4096;
 	@Override
 	public String handle(HandleParameters parameters) throws DataTransferException {
-		// TODO(michielbaird) Add confirmation.
 		Gson gson = new Gson();
 		SendFile sendFile = gson.fromJson(parameters.request, SendFile.class);
 		SendFileConfirm confirm;
@@ -34,15 +33,18 @@ public class SendFileHandler implements Handle {
 		String fileName = null;
 		
 		if (parameters.sessionHandler.getCallbacks() != null) {
+			System.err.println("Issue callback for confirmation.");
 			ConfirmResult confirmReq = parameters.sessionHandler
 				.getCallbacks()
 				.onIncomingFile(sendFile);
 			if (confirmReq.accept) {
+				System.err.println("Confirmation recieved.");
 				fileName = confirmReq.fileName;
 				confirm = new SendFileConfirm(true);
 				parameters.outToHost.write(gson.toJson(confirm) + "\n");
 				parameters.outToHost.flush();
 			} else {
+				System.err.println("File rejected.");
 				confirm = new SendFileConfirm(false);
 				parameters.outToHost.write(gson.toJson(confirm) + "\n");
 				parameters.outToHost.flush();
@@ -50,6 +52,7 @@ public class SendFileHandler implements Handle {
 				return gson.toJson(result);
 			}
 		} else {
+			System.err.println("No callback file automatically rejected.");
 			confirm = new SendFileConfirm(false);
 			parameters.outToHost.write(gson.toJson(confirm) + "\n");
 			parameters.outToHost.flush();
@@ -62,12 +65,13 @@ public class SendFileHandler implements Handle {
 			BufferedOutputStream bos = new BufferedOutputStream(fos);
 			long fileSizeRemaining = sendFile.fileSize;
 			
+			System.err.println("Setting up cipher stream.");
 			Cipher c = Cipher.getInstance("AES/CBC/PKCS5Padding");
 			byte [] iv_bytes =	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 			IvParameterSpec ivspec = new IvParameterSpec(iv_bytes);
 			c.init(Cipher.DECRYPT_MODE, parameters.sessionHandler.getKey(parameters.handle), ivspec);
 			CipherInputStream cis = new CipherInputStream(parameters.inputStream, c);
-			
+			System.err.println("Receiving file.");
 			while (fileSizeRemaining > 0) {
 				byte [] byteArray = new byte[buffer_size];
 				int readSize = fileSizeRemaining > buffer_size ? 
@@ -78,6 +82,7 @@ public class SendFileHandler implements Handle {
 				bos.write(byteArray,0,bytes_read);
 				bos.flush();
 			}
+			System.err.println("File recieved.");
 			bos.close();
 			if (parameters.sessionHandler.getCallbacks() != null) {
 				parameters.sessionHandler.getCallbacks()

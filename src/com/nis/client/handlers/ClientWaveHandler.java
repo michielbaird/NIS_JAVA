@@ -11,11 +11,11 @@ public class ClientWaveHandler implements Handle {
 	public String handle(HandleParameters parameters) {
 		Gson gson = new Gson();
 		ClientWave wave = gson.fromJson(parameters.request, ClientWave.class);
-
+		System.err.println("Receive wave from client " + parameters.handle);
 		parameters.sessionHandler.addActiveUser(parameters.handle, 
 				parameters.source.getHostName(), wave.port);
 		ClientWaveResult waveResult = new ClientWaveResult();
-		
+		System.err.println("Send host info to client");
 		return gson.toJson(waveResult);
 	}
 
