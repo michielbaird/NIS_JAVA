@@ -1,5 +1,11 @@
 package com.nis.client;
 
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -9,11 +15,13 @@ import javax.crypto.SecretKey;
 
 import com.google.gson.Gson;
 import com.google.gson.internal.Pair;
+import com.nis.shared.Base64Coder;
 
 public class SessionHandler {
 	private final ClientCallbacks callbacks;
 	private final HashMap<String, Pair<Integer,Integer> > nonceMapHandler;
 	private final HashMap<String, SecretKey> sessionKeys;
+	private final HashMap<String, PublicKey> publicKeys;
 	private final Random random;
 	private final Gson gson;
 	private final ClientKeys clientKeys;
@@ -26,6 +34,7 @@ public class SessionHandler {
 		this.clientKeys = clientKeys;
 		nonceMapHandler = new HashMap<String, Pair<Integer, Integer>>();
 		sessionKeys = new HashMap<String, SecretKey>();
+		publicKeys = new HashMap<String, PublicKey>();
 		random = new Random();
 		gson = new Gson();
 		userList = null;
@@ -33,6 +42,14 @@ public class SessionHandler {
 	
 	public SecretKey getMasterKey() {
 		return clientKeys.masterkey;
+	}
+	
+	public PublicKey getPubKey() {
+		return clientKeys.keypair.getPublic();
+	}
+	
+	public PrivateKey getPrivKey() {
+		return clientKeys.keypair.getPrivate();
 	}
 	
 	public int getNonceB(String handle, int nonceA) {
@@ -72,6 +89,24 @@ public class SessionHandler {
 	@SuppressWarnings("unchecked")
 	public void addUserList(String userListJson) {
 		userList = gson.fromJson(userListJson, Map.class);
+		for (String handle: userList.keySet()) {
+			String publicKey = (String)((Map)userList.get(handle)).get("publicKey");
+			byte [] pub_bytes = Base64Coder.decode(publicKey);
+			KeyFactory kf = null;
+			PublicKey pub = null;
+			try {
+				kf = KeyFactory.getInstance("RSA");
+				X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(pub_bytes);
+				pub = kf.generatePublic(pubKeySpec);
+			} catch (NoSuchAlgorithmException e) {
+				//should not happen
+				e.printStackTrace();
+			} catch (InvalidKeySpecException e) {
+				//should not happen
+				e.printStackTrace();
+			}
+			addPublicKey(handle, pub);
+		}
 		System.err.println(userList);
 	}
 	
@@ -87,12 +122,30 @@ public class SessionHandler {
 		}
 	}
 
-	public void addActiveUser(String handle, String hostName, int port) {
+	public void addActiveUser(String handle, String hostName, int port, String publicKey) {
 		Map<Object,Object> entry = new HashMap<Object,Object>();
-		entry.put("addr", hostName);
+		entry.put("address", hostName);
 		entry.put("port", new Double(port));
+		entry.put("publicKey", publicKey);
 		
 		userList.put(handle, entry);
+		
+		byte [] pub_bytes = Base64Coder.decode(publicKey);
+		KeyFactory kf = null;
+		PublicKey pub = null;
+		try {
+			kf = KeyFactory.getInstance("RSA");
+			X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(pub_bytes);
+			pub = kf.generatePublic(pubKeySpec);
+		} catch (NoSuchAlgorithmException e) {
+			//should not happen
+			e.printStackTrace();
+		} catch (InvalidKeySpecException e) {
+			//should not happen
+			e.printStackTrace();
+		}
+		addPublicKey(handle, pub);
+		
 		if (callbacks != null) {
 			callbacks.onClientListReceived(userList.keySet());
 		}
@@ -110,5 +163,16 @@ public class SessionHandler {
 	public ClientCallbacks getCallbacks() {
 		return callbacks;
 	}
-
+	
+	public boolean hasPubKey(String handle){
+		return publicKeys.containsKey(handle);
+	}
+	
+	public PublicKey getPublicKey(String handle){
+		return publicKeys.get(handle);
+	}
+	
+	public void addPublicKey(String handle, PublicKey pub) {
+		publicKeys.put(handle, pub);
+	}
 }

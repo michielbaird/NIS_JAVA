@@ -2,7 +2,7 @@ package com.nis.server;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.net.InetSocketAddress;
+import java.security.PublicKey;
 import java.util.HashMap;
 import java.util.Scanner;
 
@@ -11,16 +11,17 @@ import javax.crypto.spec.SecretKeySpec;
 
 import com.google.gson.Gson;
 import com.nis.shared.Base64Coder;
+import com.nis.shared.UserData;
 
 public class ServerInfo {
 	public static final String KEYFILE = "server.keys";
 	
-	private final HashMap<String, InetSocketAddress> userList;
+	private final HashMap<String, UserData> userList;
 	private final Gson gson;
 	private final HashMap<String, SecretKey> userKeys;
 	
 	public ServerInfo() {
-		userList =  new HashMap<String, InetSocketAddress>();
+		userList =  new HashMap<String, UserData>();
 		userKeys = new HashMap<String, SecretKey>();
 		gson = new Gson();
 		Scanner scanner = null;
@@ -46,8 +47,8 @@ public class ServerInfo {
 		}
 	}
 	
-	public void addUser(String handle, InetSocketAddress socketAddress) {
-		userList.put(handle, socketAddress);
+	public void addUser(String handle, String address, int port, String publicKey) {
+		userList.put(handle, new UserData(address, port, publicKey));
 	}
 	
 	public String getUserListJson() {

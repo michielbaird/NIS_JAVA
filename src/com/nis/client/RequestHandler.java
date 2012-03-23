@@ -6,6 +6,10 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.Signature;
+import java.security.SignatureException;
 import java.util.HashMap;
 
 import com.google.gson.Gson;
@@ -15,6 +19,7 @@ import com.nis.client.handlers.HelloHandler;
 import com.nis.client.handlers.MessageHandler;
 import com.nis.client.handlers.SendClientKeyHandler;
 import com.nis.client.handlers.SendFileHandler;
+import com.nis.shared.Base64Coder;
 import com.nis.shared.ErrorMessages;
 import com.nis.shared.Request;
 import com.nis.shared.Response;
@@ -59,6 +64,13 @@ public class RequestHandler extends Thread {
 		    		+ request.params;
 		    // TODO(henkjoubert): Verify the signature.
 		    boolean isSignatureValid = true;
+		    Signature signature = Signature.getInstance("SHA1withRSA");
+		    if (sessionHandler.hasKey(request.from)) {
+		    	signature.initVerify(sessionHandler.getPublicKey(request.from));
+		    	byte [] toBeVerified = checkSignature.getBytes();
+		    	signature.update(toBeVerified);
+		    	isSignatureValid = signature.verify(Base64Coder.decode(request.signature));
+		    }
 		    if (isSignatureValid) {
 			    String method = request.method;
 			    Class<? extends Handle> handleType 
@@ -83,6 +95,13 @@ public class RequestHandler extends Thread {
 		    } else {
 		    	response = new Response("", request.id, ErrorMessages.SignatureMismatch);
 		    }
+		    //sign response
+		    String stringToBeSigned = response.id + response.result;
+		    signature.initSign(sessionHandler.getPrivKey());
+		    byte [] toBeSigned = stringToBeSigned.getBytes();
+		    signature.update(toBeSigned);
+		    byte [] theSig = signature.sign();
+		    response.signature = new String(Base64Coder.encode(theSig));
 		    String responseString = gson.toJson(response);
 		    System.err.println("Sending reponse to client: " + responseString);
 		    outToHost.write(responseString + "\n");
@@ -94,6 +113,15 @@ public class RequestHandler extends Thread {
 		} catch (InstantiationException e) {
 			e.printStackTrace();
 		} catch (IllegalAccessException e) {
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SignatureException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	    

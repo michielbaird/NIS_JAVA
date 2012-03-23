@@ -21,10 +21,14 @@ public class WaveHandler implements Handle {
 			ServerInfo serverInfo) {
 		Gson gson = new Gson();
 		Wave wave = gson.fromJson(request, Wave.class);
-
+<<<<<<< HEAD
+		InetSocketAddress user = new InetSocketAddress(wave.address,wave.port);
+		serverInfo.addUser(wave.handle, user);
 		System.out.println("Adding user to userList");
+=======
 		serverInfo.addUser(wave.handle, wave.address, wave.port, wave.publicKey);
 		
+>>>>>>> master
 		String userListJSon =  serverInfo.getUserListJson();
 		WaveResult waveResult = new WaveResult(userListJSon);
 		System.out.println("Sending online userList.");
