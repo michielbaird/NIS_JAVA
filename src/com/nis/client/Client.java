@@ -68,7 +68,7 @@ public class Client {
 	private final String serverAddress;
 	private final int serverPort;
 	private final int clientPort;
-	private final String clientAddress;
+	private final String clientAddress;	
 	private final SessionHandler sessionHandler;
 	private ClientListener clientListener;
 	private final String clientHandle;
@@ -281,8 +281,6 @@ public class Client {
 			BufferedReader inFromHost = new BufferedReader(
 					new InputStreamReader(clientSocket.getInputStream()));
 	
-			String sendString = gson.toJson(request);
-			System.err.println("Sending: " + sendString + " to " + address );
 			String signatureSrc = request.from + request.method + request.id 
 					+ request.params;
 			//sign
@@ -293,6 +291,8 @@ public class Client {
 			byte [] theSig = signature.sign();
 			String sigString = new String(Base64Coder.encode(theSig));
 			request.signature = sigString;
+			String sendString = gson.toJson(request);
+			System.err.println("Sending: " + sendString + " to " + address );
 			outToHost.writeBytes(sendString+ "\n");
 			outToHost.flush();
 			if (callback != null){
